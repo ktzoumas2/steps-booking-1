@@ -5,8 +5,14 @@ absorbed the original `initial-brief.md` on 2026-07-28; that document is gone, a
 it carried that this one did not — the organisational context, the problem being solved,
 the scope boundary and the success criteria — is now §1 and §12.1.
 
-**This document is deliberately stack-agnostic.** It specifies behaviour, data and
-rules, not frameworks, libraries or schema syntax. The technical plan comes after.
+**It specifies behaviour, data and rules in plain terms** — not schema syntax, not code.
+Where it names a field or a value, that is the rule, not the column definition.
+
+**The stack is now part of this document** (§15). Earlier drafts kept it deliberately
+technology-free and left the choice to a separate technical plan; that plan never
+materialised, and a spec you cannot build from is not finished. §15 carries the technical
+decisions with the same reasoning as everything else, and flags the three that become
+expensive to reverse once the first migration has run.
 
 **Decisions taken while specifying** are marked **[D]** and listed together in §13.
 Anything still unresolved is marked **[?]**.
@@ -318,6 +324,25 @@ not a lock.
    for an unknown or deactivated address silently sends nothing.
 7. A "Sign out" action is available but not prominent.
 
+### 5.1 Where the first admin comes from
+
+Rules 2 and 6 together lock an empty database: every account is created by an admin, from
+a screen only an admin can reach. **Exactly one account is therefore created outside the
+app** — the initial admin, made by a one-off command at install time, taking a first name,
+last name and email.
+
+- It sends **no email**. Whoever ran it knows the address they typed and requests a magic
+  link in the normal way.
+- It **refuses to run when an active admin already exists**, and says so. A command that
+  mints administrators is a way in: it must work once, at install, and never become a
+  standing back door.
+- It is the **only** exception. Every other account, including every later admin, comes
+  from A3 (§7.3).
+
+**[D]** A command rather than a first-run setup page. A setup page has to be reachable by
+an unauthenticated stranger and then disabled forever afterwards — a security question
+nobody needs to answer, when whoever can run commands on the server is already trusted.
+
 ## 6. Business rules
 
 ### 6.1 Weekly distribution cap
@@ -470,13 +495,13 @@ programme.
 
 Each row shows: date and weekday, start time, duration, `Online` or the room, the
 supervisor's name and Schwerpunkt, seats taken vs capacity, and a primary button —
-`Sign up`, `Full`, or `Cancel my place`. Signing up happens **from the list**, one tap,
-no intermediate screen.
+`Anmelden`, `Ausgebucht` or `Platz freigeben` (§14.3). Signing up happens **from the
+list**, one tap, no intermediate screen.
 
 Tapping a row opens **P2 — Session detail**: everything above plus the Zoom link (for
 online sessions, once registered **[D]**) or the room, the supervisor's profile link,
-the list of registered participants by name, and — once registered — an
-`Add to calendar` action that downloads the same `.ics` the emails carry (§8.2), for
+the list of registered participants by name, and — once registered — a
+`Zum Kalender hinzufügen` action that downloads the same `.ics` the emails carry (§8.2), for
 anyone who deleted the mail or signed up on a device that does not handle attachments.
 
 **My sessions** lists the participant's upcoming sessions first, then past ones with
@@ -518,9 +543,9 @@ assumption that the figure was admin-only (§13, open question 2).
 `stattgefunden` and `n von m anwesend`, each with a `Prüfen` action opening S3 (§6.4).
 Past sessions nobody has reviewed carry a quiet `noch nicht geprüft` marker — a note, not
 an alarm: they are already counted, and the supervisor need only open one if something was
-different. A prominent `Offer a session` button.
+different. A prominent `Termin anbieten` button.
 
-**Empty:** a supervisor with no sessions sees only the `Offer a session` button, made the
+**Empty:** a supervisor with no sessions sees only the `Termin anbieten` button, made the
 focus of the screen, under "Du hast noch keine Termine angeboten." This is the one empty
 state with a real next action, so nothing else competes with it.
 
@@ -535,7 +560,7 @@ session took place and everyone registered is ticked. The question at the top is
 changing a value, which is a real action because it sets `confirmed_at` and marks the
 session reviewed.
 
-Below it: the attendance list, `Add someone who attended` (a picker of active
+Below it: the attendance list, `Teilnehmer*in hinzufügen` (a picker of active
 participants, excluding those already listed), and a less prominent
 `Die Supervision hat nicht stattgefunden`, which warns before saving that the session will
 stop counting for the supervisor and for everyone who attended.
@@ -566,7 +591,7 @@ sessions.
   participant's participation record — the same list the participant sees at P3, over
   the chosen range (§9.1). This is where the admin answers "has this trainee actually
   been coming?" without exporting anything.
-- `Export CSV` for each, plus a raw session-level export and a participation-detail
+- `CSV exportieren` for each, plus a raw session-level export and a participation-detail
   export (§9.2).
 
 **The billing sign-off.** Because sessions count without anyone confirming them (§6.4),
@@ -582,7 +607,8 @@ sessions nobody has checked is the information that makes the choice an informed
 `reviewed` column in the export (§9.2) carries the same fact downstream.
 
 **A3 — People.** List of everyone with role and active state. Add a person (first name,
-last name, email, role). Edit, deactivate, reactivate.
+last name, email, role). Edit, deactivate, reactivate. **Every account originates here**,
+with the single exception of the install-time admin (§5.1).
 
 Adding someone sends no email **by default** — the admin usually tells them in person and
 there is no "welcome" flow to get lost in. But the form carries an **optional
@@ -604,6 +630,32 @@ themselves.
 
 **A4 — Settings.** Zoom link, default duration, default capacity, weekly cap, enforce
 cap on/off, reminder lead time.
+
+### 7.4 Validation and errors
+
+Every one of these is a moment where a non-technical user is told *no*. The rule for all of
+them: **say what happened, and say what to do next.** An error that only reports a failure
+leaves the user stuck on a screen they cannot get off. The exact wording, in both
+languages, is in §14 under the key given here.
+
+| When | Key | Must contain |
+| --- | --- | --- |
+| `mode = in_person` saved with no room | `err.room_required` | That in-person sessions need a room |
+| Capacity set below current registrations (§6.5) | `err.capacity_below_registered` | The current number registered, so the supervisor knows the floor |
+| Weekly cap would be exceeded, `enforce_weekly_cap = true` (§6.1) | `err.week_full` | **The clashing sessions — date, time, supervisor** — so another week can be picked without hunting for them |
+| Weekly cap would be exceeded, enforcement off | `warn.week_full` | The same list, phrased as a warning that can be confirmed |
+| Admin overriding the cap (§6.1) | `confirm.cap_override` | That they are exceeding the programme's own limit |
+| Signing up for a session that just filled (§6.2) | `err.session_just_filled` | That the seat went to someone else in the last moment — **not** a generic failure, which reads as a bug |
+| Session date in the past on create or edit | `err.date_in_past` | That sessions cannot be offered backwards |
+| Magic link expired | `err.link_expired` | The 15-minute limit, and a button to request a fresh one |
+| Magic link already used | `err.link_used` | That links work once, and a button to request a fresh one |
+| Deactivating a supervisor with upcoming sessions (§4.1) | `err.supervisor_has_sessions` | **The sessions**, each linked, so the admin can cancel or reassign and come back |
+| Exporting with unreviewed sessions in range (§7.3 A2) | `warn.unreviewed_in_range` | How many, and that they are counted regardless |
+
+**[D]** Both weekly-cap messages name the clashing sessions rather than saying "this week
+is full". The supervisor's next action is picking a different week, and they cannot do that
+without knowing what is already there. This is the one error message in the app that does
+real work.
 
 ## 8. Emails and calendar invites
 
@@ -714,6 +766,14 @@ Every subsequent event is a cancel or a reschedule of that one message:
   produces a confusing ghost entry in some clients; `EmailLog` records who received what.
 - Attendance corrections (§6.4) send no mail and no invite — the session is over and the
   calendar entry is history.
+
+**Scheduling is an interface, not a provider.** The app expresses exactly three
+operations — *schedule a mail for an instant*, *cancel a scheduled mail*, *reschedule it*
+— and knows nothing else about how they are carried out. In production they are provider
+API calls. Locally, where there is no provider, an implementation that writes the mail to
+the console and ignores the timing is complete and correct. Without this the central
+mechanism of §8.3 has no defined behaviour on a laptop, and the app cannot be run before
+hosting is settled.
 
 **This makes the email provider load-bearing** in a way it was not before. It must accept
 a delivery time **at least eight weeks out** — a participant may sign up long before a
@@ -843,6 +903,14 @@ Calendar invites are constrained by the same rules — one named attendee per fi
 personal data in the *Add to calendar* links (§8.2). Attendance data never leaves the
 app: it is in no email and no invite.
 
+**Time is supplied, not read.** The current instant is passed into the application rather
+than taken from the system clock. Nearly every rule that matters is time-dependent — a
+session counts *because* its end time has passed (§6.4), weeks are ISO weeks (§6.1),
+reminders are scheduled relative to a start time (§8.3) — and none of it can be tested
+against a clock that only moves forwards at one second per second. A test must be able to
+stand before, during and after a session at will. This is the difference between
+acceptance criteria that run automatically and ones somebody has to sit and watch.
+
 **No background jobs.** The app runs no cron, no worker and no scheduled process. The two
 things that would normally need one are handled without: delayed email is held by the
 provider (§8.3), and a session becoming *held* is derived from its end time at read time
@@ -870,7 +938,7 @@ for clarity, not for scale.**
 ### 12.1 Success criteria
 
 Whether the project worked, judged some months after launch. These are outcomes, not
-tests — §12.2 can pass completely while these still fail.
+tests — §12.3 can pass completely while these still fail.
 
 - Supervision scheduling and attendance no longer live in Excel — **the spreadsheet is
   retired within one term of launch.**
@@ -887,137 +955,170 @@ tests — §12.2 can pass completely while these still fail.
 - **Support load is near zero** — nobody needs to be talked through how to use it. This
   is the one that matters most — §1.2's primary constraint, stated as an outcome.
 
-### 12.2 Acceptance criteria
+### 12.2 The test fixture
+
+Several criteria below check counts "against a hand-built fixture". §11 forbids real data,
+and an unseeded app shows nothing but empty states, so one fixture serves both the test
+suite and local demonstration. It contains, with **invented names and `@example.org`
+addresses throughout**:
+
+- one admin, **two supervisors** — so per-supervisor counts can be told apart — and
+  **twelve participants**, matching the programme's real shape (§11);
+- sessions across **at least four ISO weeks**, including one week already at
+  `weekly_session_cap`, so the cap can be tested without first having to create it;
+- **one session at capacity**, for the `Full` state and the last-seat race;
+- **one cancelled** session and **one recorded as not held** — both must count for nobody,
+  for different reasons;
+- **one reviewed** and **one unreviewed** past session, since that difference drives the
+  export sign-off (§7.3 A2) and must never drive a count (§9.1);
+- at least one recorded absence and one participant added at confirmation, so
+  `sessions_attended` and `sessions_registered` genuinely differ and the `source` rule
+  is exercised.
+
+Sessions are defined **relative to a reference instant**, never as fixed calendar dates —
+"three weeks ago", "yesterday", "in four days". Combined with the supplied clock (§11),
+this is what lets a test stand at any point in a session's life, and stops the fixture
+rotting the moment it is written.
+
+### 12.3 Acceptance criteria
 
 Testable, in build order.
 
 **Access**
-1. Requesting a link for a registered address delivers a working single-use link.
-2. Requesting one for an unknown or deactivated address shows the identical
+1. On an empty database the install command creates one admin, who can then request a
+    magic link and reach A3. Without it no account exists and nobody can sign in.
+2. Running the install command again, once an active admin exists, refuses and explains
+    why.
+3. Requesting a link for a registered address delivers a working single-use link.
+4. Requesting one for an unknown or deactivated address shows the identical
     confirmation and sends nothing.
-3. A used or expired token is rejected with an offer to request a new one.
-4. Signing in lands each role on its own home screen.
-5. A person added with `Einladung senden` ticked receives the invitation mail; one
+5. A used or expired token is rejected with an offer to request a new one.
+6. Signing in lands each role on its own home screen.
+7. A person added with `Einladung senden` ticked receives the invitation mail; one
     added without it receives nothing.
 
 **Offering sessions**
-6. A supervisor creates an in-person session; it appears to participants immediately.
-7. An online session shows the settings Zoom link; changing that setting changes it
+8. A supervisor creates an in-person session; it appears to participants immediately.
+9. An online session shows the settings Zoom link; changing that setting changes it
     everywhere.
-8. Creating a third session in an already-full ISO week is blocked, and the message
+10. Creating a third session in an already-full ISO week is blocked, and the message
     names the two existing sessions.
-9. With `enforce_weekly_cap = false`, the same attempt warns and can be confirmed.
-10. Editing a session's date into a full week is blocked the same way; saving it without
+11. With `enforce_weekly_cap = false`, the same attempt warns and can be confirmed.
+12. Editing a session's date into a full week is blocked the same way; saving it without
     changing the date is not blocked by its own existence.
-11. An admin can override the block.
-12. `mode = in_person` cannot be saved without a room.
+13. An admin can override the block.
+14. `mode = in_person` cannot be saved without a room.
 
 **Browsing and filtering**
-13. The Available tab groups upcoming sessions under calendar-week headings, in date
+15. The Available tab groups upcoming sessions under calendar-week headings, in date
     order, skipping empty weeks.
-14. Filtering by a supervisor shows only their upcoming sessions; the active filter is
+16. Filtering by a supervisor shows only their upcoming sessions; the active filter is
     stated on screen and can be cleared in one tap.
-15. The supervisor dropdown lists only supervisors who have at least one upcoming
+17. The supervisor dropdown lists only supervisors who have at least one upcoming
     session, plus `Alle`.
-16. A full session still appears in the list, greyed, with `Full` instead of `Sign up`.
-17. With no upcoming sessions at all, Available explains that none are scheduled. With
+18. A full session still appears in the list, greyed, with `Full` instead of `Sign up`.
+19. With no upcoming sessions at all, Available explains that none are scheduled. With
     sessions present but none matching the supervisor filter, it says so instead and
     offers to clear the filter — the two messages are never interchanged.
-18. My sessions, My participation and the supervisor's session list each show their
+20. My sessions, My participation and the supervisor's session list each show their
     own empty state; My participation shows a visible `0`, not a blank panel.
 
 **Sign-up**
-19. A participant signs up from the list in one tap and gets a confirmation email.
-20. When active registrations reach capacity, the button reads `Full`.
-21. Two simultaneous sign-ups for one remaining seat: exactly one succeeds, the other
+21. A participant signs up from the list in one tap and gets a confirmation email.
+22. When active registrations reach capacity, the button reads `Full`.
+23. Two simultaneous sign-ups for one remaining seat: exactly one succeeds, the other
     is told the session just filled up. No over-booking.
-22. Cancelling frees the seat immediately and allows re-registering.
-23. Capacity cannot be edited below the current number of registrations.
+24. Cancelling frees the seat immediately and allows re-registering.
+25. Capacity cannot be edited below the current number of registrations.
 
 **Reminders**
-24. Registering schedules exactly one reminder with the provider, for
+26. Registering schedules exactly one reminder with the provider, for
     `start − reminder_lead_hours`, and stores its id on the registration.
-25. Each registered participant receives that reminder at the configured lead time, in
+27. Each registered participant receives that reminder at the configured lead time, in
     their own language, with the right link or room.
-26. Cancelling a registration cancels its scheduled reminder; the participant receives
+28. Cancelling a registration cancels its scheduled reminder; the participant receives
     nothing afterwards, and other participants' reminders are unaffected.
-27. Cancelling a session cancels every scheduled reminder for it and sends the
+29. Cancelling a session cancels every scheduled reminder for it and sends the
     cancellation email.
-28. Editing the time sends a change email showing old → new.
-29. **A session moved after its reminder was scheduled reminds everyone at the new time**,
+30. Editing the time sends a change email showing old → new.
+31. **A session moved after its reminder was scheduled reminds everyone at the new time**,
     and no reminder arrives at the old one.
-30. Someone registering inside the lead window is sent the reminder immediately.
-31. Nothing is sent inside the last hour before a session starts.
-32. The chosen email provider accepts a delivery time at least eight weeks out and
+32. Someone registering inside the lead window is sent the reminder immediately.
+33. Nothing is sent inside the last hour before a session starts.
+34. The chosen email provider accepts a delivery time at least eight weeks out and
     supports cancelling and rescheduling by id — verified against the real provider
     before it is adopted, not assumed.
 
 **Calendar invites**
-33. The sign-up confirmation carries an `.ics` that imports as one event at the right
+35. The sign-up confirmation carries an `.ics` that imports as one event at the right
     date and time in Apple Calendar, Google Calendar (via Gmail) and Outlook.
-34. Moving a session sends an updated invite that **replaces** the existing entry in
+36. Moving a session sends an updated invite that **replaces** the existing entry in
     each of those clients — one event afterwards, not two — with the same `UID` and a
     higher `SEQUENCE`.
-35. Cancelling a session removes the entry from each client's calendar.
-36. A participant who cancels their own place gets a cancellation invite and the entry
+37. Cancelling a session removes the entry from each client's calendar.
+38. A participant who cancels their own place gets a cancellation invite and the entry
     disappears from their calendar; other participants' calendars are untouched.
-37. The `.ics` sent to one participant names only that participant as `ATTENDEE` and
+39. The `.ics` sent to one participant names only that participant as `ATTENDEE` and
     contains no other participant's name or email.
-38. A session at 10:00 imports as 10:00 Europe/Berlin on both sides of a DST change,
+40. A session at 10:00 imports as 10:00 Europe/Berlin on both sides of a DST change,
     and on a device set to another timezone shows the correct corresponding local time.
-39. The supervisor gets an invite for a session they created.
-40. Accepting or declining the invite in a mail client changes nothing in the app.
+41. The supervisor gets an invite for a session they created.
+42. Accepting or declining the invite in a mail client changes nothing in the app.
 
 **Held by default, review and counting**
-41. **A session counts for its supervisor, and for everyone registered, as soon as its
+43. **A session counts for its supervisor, and for everyone registered, as soon as its
     end time passes — with nobody having touched it.** No email is sent to make this
     happen and no job runs to cause it.
-42. Opening the review screen and saving it unchanged alters no count but marks the
+44. Opening the review screen and saving it unchanged alters no count but marks the
     session reviewed.
-43. Recording *did not take place* warns first, then removes the session from the
+45. Recording *did not take place* warns first, then removes the session from the
     supervisor's count and from every participant's record.
-44. Unticking a participant removes only that participant's attendance; the session still
+46. Unticking a participant removes only that participant's attendance; the session still
     counts for the supervisor and for everyone else.
-45. Someone unregistered can be added as attended, and someone added in error removed.
-46. A review can be undone — attendance re-ticked, *did not take place* reversed — and
+47. Someone unregistered can be added as attended, and someone added in error removed.
+48. A review can be undone — attendance re-ticked, *did not take place* reversed — and
     every count follows immediately.
-47. Both counts treat an unreviewed session exactly as a reviewed one; the only difference
+49. Both counts treat an unreviewed session exactly as a reviewed one; the only difference
     is what A2 shows before exporting.
-48. A session in progress — started but not yet ended — can still be cancelled, and doing
+50. A session in progress — started but not yet ended — can still be cancelled, and doing
     so emails participants and removes the entry from their calendars.
-49. Cancelling records who cancelled it and when.
-50. No email or invite is sent for a review or a correction.
-51. Per-supervisor counts equal the number of ended, non-cancelled sessions not recorded
+51. Cancelling records who cancelled it and when.
+52. No email or invite is sent for a review or a correction.
+53. Per-supervisor counts equal the number of ended, non-cancelled sessions not recorded
     as *did not take place* — verified against a hand-built fixture containing reviewed,
     unreviewed and not-held sessions.
-52. A 60-minute and a 120-minute session each count as **one**.
+54. A 60-minute and a 120-minute session each count as **one**.
 
 **Participation record**
-53. A participant sees their own attended-session count and the list of exactly those
+55. A participant sees their own attended-session count and the list of exactly those
     sessions, and the two agree.
-54. Sessions they registered for but missed appear separately and are not counted.
-55. A session appears in the participant's record as soon as it has ended, without
+56. Sessions they registered for but missed appear separately and are not counted.
+57. A session appears in the participant's record as soon as it has ended, without
     anyone confirming it, and disappears only if it is recorded as not held.
-56. A participant cannot see another participant's attendance anywhere in the app.
-57. The admin sees the same record for any participant, over a chosen date range, and
+58. A participant cannot see another participant's attendance anywhere in the app.
+59. The admin sees the same record for any participant, over a chosen date range, and
     the participation-detail CSV matches it row for row.
-58. Someone added at confirmation counts in `sessions_attended` but **not** in
+60. Someone added at confirmation counts in `sessions_attended` but **not** in
     `sessions_registered`.
-59. Exporting over a range containing unreviewed sessions shows how many and which,
+61. Exporting over a range containing unreviewed sessions shows how many and which,
     and requires an explicit acknowledgement before the export runs.
-60. The session-level CSV distinguishes an assumed *held* from a recorded one via
+62. The session-level CSV distinguishes an assumed *held* from a recorded one via
     the `took_place` and `reviewed` columns.
-61. CSV exports open in Excel with German characters intact.
+63. CSV exports open in Excel with German characters intact.
+64. Every validation error in §7.4 appears with the exact wording of §14, in the
+    recipient's language, and names what to do about it.
+65. With the clock supplied by the test rather than the system, a session can be
+    observed before, during and after its end time within a single test run.
 
 **People**
-62. Deactivating a participant releases their upcoming seats and sends them a
+66. Deactivating a participant releases their upcoming seats and sends them a
     cancellation invite; deactivating a supervisor who still has upcoming sessions is
     blocked, and the message names those sessions.
 
 **Language**
-63. Switching language changes every visible string and persists across sign-in.
-64. Emails arrive in the recipient's chosen language.
-65. The calendar invite's title, location and description are in the recipient's
+67. Switching language changes every visible string and persists across sign-in.
+68. Emails arrive in the recipient's chosen language.
+69. The calendar invite's title, location and description are in the recipient's
     language, and its times remain Europe/Berlin.
 
 ## 13. Decisions and open questions
@@ -1079,6 +1180,14 @@ but a provider that rewrites or strips MIME parts breaks them.
 | 32 | **Reminder timing is handed to the email provider at sign-up**, cancelled and rescheduled as things change | Removes the polling scheduler and with it idempotency, unique constraints, supersession and double-run defences — the largest cluster of edge cases in the spec |
 | 33 | **The app runs no background jobs at all** (§11) | Follows from D29 and D32. A periodic process brings back retries, missed runs and reconciliation; keeping it out is worth designing around |
 | 34 | The email provider must schedule ≥ 8 weeks ahead and cancel/reschedule by id | D32 makes this load-bearing rather than a nicety; several providers cap scheduling at a few days, which would break the design |
+| 35 | **The first admin is created by an install-time command** (§5.1), which refuses to run once an active admin exists | Without it an empty database cannot be signed into at all. A command rather than a setup page, which would have to be open to strangers and then closed forever |
+| 36 | **The stack lives in this document** (§15), which is no longer stack-agnostic | The separate technical plan never materialised, and a spec nobody can build from is unfinished |
+| 37 | Python 3.13 + Django 5.2 LTS, SQLite locally and Postgres in production | §15. Server-rendered, no separate API and client, at ~20 users |
+| 38 | Custom user model, and wall-clock date/time as separate fields, from the first migration | §15.1. Both are painful to change afterwards and cheap to get right at the start |
+| 39 | **Translation by catalog, not gettext** | `msgfmt` is absent on the development machine and Django reads only compiled `.mo`. The catalog is §14 itself, so document and code cannot drift |
+| 40 | **Users are addressed as *Sie*** | The audience includes professors; formal address is never wrong there, informal sometimes is. Flagged for STEPS to confirm — it is a find-and-replace in §14 |
+| 41 | Error messages name what to do next, and the weekly-cap message names the clashing sessions | §7.4. The supervisor's next action is choosing another week, which is impossible without knowing what is already in this one |
+| 42 | One fixture serves both the test suite and local demonstration (§12.2) | The same data proves the counts and fills the screens; two sets would diverge |
 
 ### Still open **[?]**
 
@@ -1115,3 +1224,266 @@ but a provider that rewrites or strips MIME parts breaks them.
 11. **Should the admin be able to record attendance in bulk**, e.g. mark a whole session
     attended from A1 without opening it? Only worth it if sessions routinely sit
     unconfirmed and the admin ends up doing the supervisors' work.
+
+## 14. Copy
+
+Every user-facing string, in both languages. **German is the source**; English is a full
+alternative, not a fallback (§10). Keys are the catalog keys the implementation uses, so
+this table and the running app cannot drift apart — if a string is not here, it is not on
+a screen.
+
+`%(name)s`-style placeholders are substituted at render time. Free text entered by users —
+Schwerpunkt, room names — is never translated.
+
+**[D] The app addresses users as *Sie*.** The audience includes professors and licensed
+psychotherapists alongside trainees, and formal address is never wrong in that room while
+informal address sometimes is. Worth confirming with STEPS, who know their own culture —
+it is a find-and-replace in this table, not a rewrite.
+
+### 14.1 Global
+
+| Key | de | en |
+| --- | --- | --- |
+| `app.name` | STEPS Supervision | STEPS Supervision |
+| `nav.sessions` | Termine | Sessions |
+| `nav.my_sessions` | Meine Termine | My sessions |
+| `nav.my_participation` | Meine Teilnahme | My participation |
+| `nav.profile` | Mein Profil | My profile |
+| `nav.my_counts` | Meine Zahlen | My counts |
+| `nav.all_sessions` | Alle Termine | All sessions |
+| `nav.counts_export` | Zahlen und Export | Counts and export |
+| `nav.people` | Personen | People |
+| `nav.settings` | Einstellungen | Settings |
+| `action.sign_out` | Abmelden | Sign out |
+| `action.save` | Speichern | Save |
+| `action.cancel` | Abbrechen | Cancel |
+| `action.back` | Zurück | Back |
+| `lang.switch` | English | Deutsch |
+| `mode.online` | Online | Online |
+| `mode.room` | Raum %(room)s | Room %(room)s |
+| `session.duration` | %(minutes)s Min. | %(minutes)s min |
+| `label.supervisor` | Supervisor*in | Supervisor |
+| `label.focus_area` | Schwerpunkt | Focus area |
+
+### 14.2 Sign-in (§5)
+
+| Key | de | en |
+| --- | --- | --- |
+| `signin.title` | Anmelden | Sign in |
+| `signin.intro` | Geben Sie Ihre E-Mail-Adresse ein. Sie erhalten einen Link zum Anmelden — ein Passwort brauchen Sie nicht. | Enter your email address. You'll get a link to sign in — no password needed. |
+| `signin.email_label` | E-Mail-Adresse | Email address |
+| `signin.submit` | Link senden | Send link |
+| `signin.sent_title` | Schauen Sie in Ihr Postfach | Check your email |
+| `signin.sent_body` | Wenn diese Adresse hinterlegt ist, haben wir einen Anmeldelink geschickt. Er gilt 15 Minuten. | If that address is registered, we have sent a sign-in link. It is valid for 15 minutes. |
+| `signin.request_new` | Neuen Link anfordern | Request a new link |
+
+### 14.3 P1 — Sessions (§7.1)
+
+| Key | de | en |
+| --- | --- | --- |
+| `p1.tab_available` | Angebotene Termine | Available |
+| `p1.tab_mine` | Meine Termine | My sessions |
+| `p1.tab_participation` | Meine Teilnahme | My participation |
+| `p1.filter_label` | Supervisor*in | Supervisor |
+| `p1.filter_all` | Alle | All |
+| `p1.filter_active` | Gefiltert: %(name)s | Filtered: %(name)s |
+| `p1.filter_clear` | Filter entfernen | Clear filter |
+| `p1.week_heading` | KW %(week)s · %(from)s – %(to)s | Week %(week)s · %(from)s – %(to)s |
+| `p1.seats` | %(taken)s von %(capacity)s Plätzen belegt | %(taken)s of %(capacity)s seats taken |
+| `p1.action_signup` | Anmelden | Sign up |
+| `p1.action_full` | Ausgebucht | Full |
+| `p1.action_cancel` | Platz freigeben | Cancel my place |
+| `p1.past_sessions` | Vergangene Termine | Past sessions |
+| `p1.attended` | teilgenommen | attended |
+| `p1.absent` | nicht teilgenommen | did not attend |
+
+### 14.4 P2 — Session detail (§7.1)
+
+| Key | de | en |
+| --- | --- | --- |
+| `p2.title` | Termin | Session |
+| `p2.profile_link` | Profil ansehen | View profile |
+| `p2.zoom_link` | Zoom-Link | Zoom link |
+| `p2.zoom_hidden` | Der Zoom-Link erscheint hier, sobald Sie angemeldet sind. | The Zoom link appears here once you have signed up. |
+| `p2.registered_list` | Angemeldet | Registered |
+| `p2.add_to_calendar` | Zum Kalender hinzufügen | Add to calendar |
+
+### 14.5 P3 — My participation (§7.1)
+
+| Key | de | en |
+| --- | --- | --- |
+| `p3.title` | Meine Teilnahme | My participation |
+| `p3.count_label` | Teilgenommene Supervisionen | Sessions attended |
+| `p3.range_all` | Gesamter Zeitraum | All time |
+| `p3.range_pick` | Zeitraum wählen | Choose a range |
+| `p3.absent_group` | Angemeldet, nicht teilgenommen | Registered, did not attend |
+| `p3.not_reviewed` | noch nicht geprüft | not yet reviewed |
+
+### 14.6 S1–S3 — Supervisor (§7.2)
+
+| Key | de | en |
+| --- | --- | --- |
+| `s1.title` | Meine Termine | My sessions |
+| `s1.offer` | Termin anbieten | Offer a session |
+| `s1.upcoming` | Kommende Termine | Upcoming |
+| `s1.past` | Vergangene Termine | Past |
+| `s1.registered_count` | %(count)s angemeldet | %(count)s registered |
+| `s1.present_count` | %(present)s von %(registered)s anwesend | %(present)s of %(registered)s present |
+| `s1.took_place` | stattgefunden | took place |
+| `s1.not_held` | hat nicht stattgefunden | did not take place |
+| `s1.review` | Prüfen | Review |
+| `s2.title_new` | Termin anbieten | Offer a session |
+| `s2.title_edit` | Termin bearbeiten | Edit session |
+| `s2.date` | Datum | Date |
+| `s2.start_time` | Beginn | Start time |
+| `s2.duration` | Dauer (Minuten) | Duration (minutes) |
+| `s2.mode` | Format | Format |
+| `s2.mode_online` | Online | Online |
+| `s2.mode_in_person` | Vor Ort | In person |
+| `s2.room` | Raum | Room |
+| `s2.capacity` | Plätze | Seats |
+| `s2.submit` | Termin speichern | Save session |
+| `s2.cancel_session` | Termin absagen | Cancel session |
+| `s2.cancel_confirm` | Alle angemeldeten Personen werden benachrichtigt und der Termin verschwindet aus ihren Kalendern. | Everyone registered is notified and the session disappears from their calendars. |
+| `s3.title` | Termin prüfen | Review session |
+| `s3.question` | War etwas anders? | Was anything different? |
+| `s3.all_as_planned` | Alles wie geplant | All as planned |
+| `s3.attendance` | Anwesenheit | Attendance |
+| `s3.add_attendee` | Teilnehmer*in hinzufügen | Add someone who attended |
+| `s3.not_held_action` | Die Supervision hat nicht stattgefunden | The session did not take place |
+| `s3.not_held_warning` | Der Termin zählt dann für niemanden mehr — weder für Sie noch für die Teilnehmenden. | The session will then count for nobody — not for you, and not for the participants. |
+| `s3.last_reviewed` | Zuletzt geprüft von %(name)s, %(when)s | Last reviewed by %(name)s, %(when)s |
+| `s4.title` | Mein Profil | My profile |
+| `s4.email_readonly` | Ihre E-Mail-Adresse ist Ihre Anmeldung. Nur die Administration kann sie ändern. | Your email address is your sign-in. Only an administrator can change it. |
+| `s4.language` | Sprache | Language |
+| `s5.title` | Meine Zahlen | My counts |
+| `s5.sessions_held` | Durchgeführte Supervisionen | Sessions held |
+
+### 14.7 A1–A4 — Admin (§7.3)
+
+| Key | de | en |
+| --- | --- | --- |
+| `a1.title` | Alle Termine | All sessions |
+| `a1.filter_state` | Status | State |
+| `a1.filter_unreviewed` | Nur ungeprüfte | Unreviewed only |
+| `a1.filter_range` | Zeitraum | Date range |
+| `a2.title` | Zahlen und Export | Counts and export |
+| `a2.per_supervisor` | Pro Supervisor*in | Per supervisor |
+| `a2.per_participant` | Pro Teilnehmer*in | Per participant |
+| `a2.sessions_held` | Durchgeführt | Sessions held |
+| `a2.total_minutes` | Minuten gesamt | Total minutes |
+| `a2.sessions_attended` | Teilgenommen | Attended |
+| `a2.sessions_registered` | Angemeldet | Registered |
+| `a2.export_csv` | CSV exportieren | Export CSV |
+| `a2.signoff_ack` | Ich habe die Liste geprüft | I have checked the list |
+| `a3.title` | Personen | People |
+| `a3.add_person` | Person hinzufügen | Add a person |
+| `a3.first_name` | Vorname | First name |
+| `a3.last_name` | Nachname | Last name |
+| `a3.email` | E-Mail-Adresse | Email address |
+| `a3.role` | Rolle | Role |
+| `a3.role_participant` | Teilnehmer*in | Participant |
+| `a3.role_supervisor` | Supervisor*in | Supervisor |
+| `a3.role_admin` | Administration | Administrator |
+| `a3.send_invitation` | Einladung senden | Send an invitation |
+| `a3.deactivate` | Deaktivieren | Deactivate |
+| `a3.reactivate` | Wieder aktivieren | Reactivate |
+| `a3.inactive` | inaktiv | inactive |
+| `a4.title` | Einstellungen | Settings |
+| `a4.zoom_url` | Zoom-Link für alle Online-Termine | Zoom link for all online sessions |
+| `a4.default_duration` | Standarddauer (Minuten) | Default duration (minutes) |
+| `a4.default_capacity` | Standardanzahl Plätze | Default number of seats |
+| `a4.weekly_cap` | Termine pro Woche (Obergrenze) | Sessions per week (cap) |
+| `a4.enforce_cap` | Obergrenze durchsetzen | Enforce the cap |
+| `a4.reminder_lead` | Erinnerung senden (Stunden vorher) | Send reminder (hours before) |
+
+### 14.8 Empty states (§7)
+
+| Key | de | en |
+| --- | --- | --- |
+| `empty.no_sessions` | Zurzeit sind keine Termine eingetragen. Supervisor*innen tragen neue Termine ein — schauen Sie später noch einmal vorbei. | No sessions are scheduled at the moment. Supervisors add them — please check back later. |
+| `empty.no_sessions_for_filter` | %(name)s bietet zurzeit keine Termine an. | %(name)s has no upcoming sessions. |
+| `empty.no_registrations` | Sie sind noch für keinen Termin angemeldet. | You are not signed up for any session yet. |
+| `empty.browse_link` | Termine ansehen | Browse sessions |
+| `empty.no_participation` | Sobald Sie an einer Supervision teilgenommen haben, erscheint sie hier. | Once you have attended a session, it will appear here. |
+| `empty.no_own_sessions` | Sie haben noch keine Termine angeboten. | You have not offered any sessions yet. |
+| `empty.no_sessions_at_all` | Es gibt noch keine Termine. Legen Sie zuerst Personen an. | There are no sessions yet. Start by adding people. |
+| `empty.no_matches` | Keine Termine für diese Auswahl. | No sessions match this selection. |
+
+### 14.9 Validation and errors (§7.4)
+
+| Key | de | en |
+| --- | --- | --- |
+| `err.room_required` | Bitte geben Sie einen Raum an — Termine vor Ort brauchen einen Ort. | Please give a room — in-person sessions need a location. |
+| `err.capacity_below_registered` | Es sind bereits %(count)s Personen angemeldet. Weniger Plätze sind nicht möglich. | %(count)s people are already registered. The number of seats cannot go below that. |
+| `err.week_full` | In dieser Woche gibt es bereits %(count)s Termine: %(sessions)s. Bitte wählen Sie eine andere Woche. | There are already %(count)s sessions that week: %(sessions)s. Please choose a different week. |
+| `warn.week_full` | In dieser Woche gibt es bereits %(count)s Termine: %(sessions)s. Trotzdem speichern? | There are already %(count)s sessions that week: %(sessions)s. Save anyway? |
+| `confirm.cap_override` | Damit überschreiten Sie die Obergrenze von %(cap)s Terminen pro Woche. | This exceeds the cap of %(cap)s sessions per week. |
+| `err.session_just_filled` | Dieser Termin ist gerade belegt worden. Der letzte Platz ist an jemand anderen gegangen. | This session has just filled up. The last seat went to someone else. |
+| `err.date_in_past` | Das Datum liegt in der Vergangenheit. Termine lassen sich nur für die Zukunft anbieten. | That date is in the past. Sessions can only be offered for the future. |
+| `err.link_expired` | Dieser Link ist abgelaufen — er gilt 15 Minuten. Fordern Sie einen neuen an. | This link has expired — links are valid for 15 minutes. Please request a new one. |
+| `err.link_used` | Dieser Link wurde bereits verwendet. Jeder Link funktioniert genau einmal. | This link has already been used. Each link works exactly once. |
+| `err.supervisor_has_sessions` | %(name)s hat noch kommende Termine: %(sessions)s. Bitte sagen Sie diese zuerst ab oder übertragen Sie sie. | %(name)s still has upcoming sessions: %(sessions)s. Please cancel or reassign them first. |
+| `warn.unreviewed_in_range` | %(count)s Termine in diesem Zeitraum wurden noch nicht geprüft. Sie zählen trotzdem mit. | %(count)s sessions in this range have not been reviewed. They are counted regardless. |
+
+### 14.10 Emails (§8.1)
+
+Subjects, plus the one line that carries each mail. Full bodies follow the same rules as
+§8.1: date, time, duration, and either the Zoom link or the room.
+
+| Key | de | en |
+| --- | --- | --- |
+| `email.login.subject` | Ihr Anmeldelink für STEPS Supervision | Your sign-in link for STEPS Supervision |
+| `email.login.body` | Klicken Sie auf den Link, um sich anzumelden. Er gilt 15 Minuten. | Click the link to sign in. It is valid for 15 minutes. |
+| `email.invitation.subject` | Zugang zu STEPS Supervision | Access to STEPS Supervision |
+| `email.invitation.body` | Die Supervisionstermine von STEPS werden ab sofort hier verwaltet. Sie melden sich mit dieser E-Mail-Adresse an — ein Passwort brauchen Sie nicht. | STEPS supervision sessions are now managed here. You sign in with this email address — no password needed. |
+| `email.registration_confirmed.subject` | Angemeldet: Supervision am %(date)s | Registered: supervision on %(date)s |
+| `email.registration_cancelled.subject` | Abgemeldet: Supervision am %(date)s | Cancelled: supervision on %(date)s |
+| `email.registration_cancelled.body` | Ihr Platz ist wieder frei. Der Termin wurde aus Ihrem Kalender entfernt. | Your place has been released. The session has been removed from your calendar. |
+| `email.reminder.subject` | Erinnerung: Supervision am %(date)s | Reminder: supervision on %(date)s |
+| `email.session_cancelled.subject` | Abgesagt: Supervision am %(date)s | Cancelled: supervision on %(date)s |
+| `email.session_cancelled.body` | Dieser Termin findet nicht statt. Sie müssen nichts weiter tun. | This session will not take place. There is nothing you need to do. |
+| `email.session_changed.subject` | Geändert: Supervision am %(date)s | Changed: supervision on %(date)s |
+| `email.session_changed.body` | Der Termin hat sich geändert: %(old)s → %(new)s | The session has changed: %(old)s → %(new)s |
+| `email.session_created.subject` | Ihr Supervisionstermin am %(date)s | Your supervision session on %(date)s |
+
+## 15. Technical decisions
+
+The spec is otherwise about behaviour. This section is about what to build it with, and
+exists because the technical plan that was supposed to carry it never materialised — a
+specification nobody can build from is unfinished.
+
+| Decision | Choice | Why |
+| --- | --- | --- |
+| Language | **Python 3.13**, pinned via `uv` | The development machine runs 3.14.5, which is newer than the Django LTS supports. **Check the supported range at install time rather than trusting this row** |
+| Framework | **Django 5.2 LTS**, server-rendered templates | Sessions, forms, migrations and translation are most of this app, and Django brings all four. Nothing here justifies a separate API and client at ~20 users |
+| Database | **SQLite** locally, **Postgres** in production | No application difference. SQLite inside a transaction satisfies §6.2's atomic last seat |
+| Dependencies | **`uv`** | Already present on the machine, and it pins the Python version as well as the packages |
+| Background work | **None** | §11 forbids it. Delayed mail belongs to the provider (§8.3); *held* is derived, not written (§4.2) |
+| Email, locally | **Console backend** | Magic links print to the terminal. Nothing about running locally waits on the hosting or provider decision |
+| Translation | **Catalog-based, no gettext dependency** | GNU `msgfmt` is not installed on the development machine and Django's i18n reads only compiled `.mo` files. A catalog keyed by locale needs no external tooling, and it is §14 — one artefact, not two that drift |
+| Time | **Supplied to the application**, never read from the system clock | §11. Every time-dependent rule becomes testable |
+
+### 15.1 The three that are expensive to reverse
+
+These are settled by the first migration and awkward to change afterwards. They belong in
+the initial commit, correct.
+
+1. **A custom user model**, email-identified, with a `role` and **no password field**.
+   §4.1 has no password — authentication is a magic link (§5) — while Django's default
+   user is username-and-password. Changing `AUTH_USER_MODEL` after the first migration is
+   notoriously painful and best simply avoided.
+2. **`date` and `start_time` as separate date and time fields**, never a single combined
+   timestamp. §11 requires wall-clock storage so that a 10:00 session is still 10:00 after
+   a DST change; a timezone-aware timestamp field silently converts to UTC and quietly
+   breaks exactly that. The actual instant is derived when one is needed.
+3. **Record-keeping timestamps as UTC instants**, with the project timezone set to
+   Europe/Berlin. Also §11, and distinct from the point above: `created_at` and `sent_at`
+   are moments, while a session's date and time are a wall-clock intention.
+
+### 15.2 What is deliberately not decided here
+
+Hosting, the email provider, and EU data residency (§13, open questions 7 and 8). None of
+them blocks a locally running version: the console backend stands in for the provider, and
+SQLite stands in for Postgres. The provider decision does need making before reminders can
+work for real, and §8.3 sets out what it must support.
