@@ -1,0 +1,19 @@
+# macOS
+.DS_Store
+
+# Editors
+.vscode/
+.idea/
+*.swp
+
+# Local agent/tool settings that should not be shared
+.claude/settings.local.json
+
+# Environment and secrets — never commit these.
+# The email provider credentials (§8.3) and any hosting keys belong here.
+.env
+.env.*
+!.env.example
+
+# Nothing below is in use yet — the stack is undecided (see CLAUDE.md).
+# Add build, dependency and coverage directories here once one is chosen.
