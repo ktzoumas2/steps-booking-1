@@ -10,15 +10,16 @@ from __future__ import annotations
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseRedirect
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
-from supervision import mail, signin
-from supervision.catalog import LOCALES
+from supervision import mail, sessions as session_service, signin
+from supervision.catalog import LOCALES, t
+from supervision.forms import SessionForm
 from supervision.middleware import LOCALE_COOKIE
-from supervision.models import EmailKind, Role
+from supervision.models import EmailKind, Role, Session, SessionStatus, Settings
 from supervision.navigation import HOME_BY_ROLE
 
 SIGNIN_BACKEND = "supervision.auth_backends.MagicLinkBackend"
@@ -131,10 +132,6 @@ def _redirect_back(request) -> HttpResponseRedirect:
 
 
 # --- Role home screens (§7.1 P1, §7.2 S1, §7.3 A1) ------------------------
-#
-# Each is the real screen for its role, showing the real §14 empty state. On an
-# empty database that is the whole screen; the lists, filters and actions arrive
-# with the slices that build them.
 
 
 def _require_role(request, role):
@@ -143,20 +140,188 @@ def _require_role(request, role):
 
 @login_required
 def participant_home(request):
+    """P1 — Sessions (§7.1). Week grouping, the supervisor filter and the
+    sign-up button arrive with the slices that build them."""
     if not _require_role(request, Role.PARTICIPANT):
         return redirect("home")
-    return render(request, "screens/p1_sessions.html", {"sessions": []})
+
+    upcoming = [
+        session
+        for session in Session.objects.filter(
+            status=SessionStatus.OFFERED
+        ).select_related("supervisor")
+        if session.is_upcoming(request.now)
+    ]
+    return render(
+        request,
+        "screens/p1_sessions.html",
+        {"sessions": upcoming, "zoom_url": Settings.load().zoom_url},
+    )
 
 
 @login_required
 def supervisor_home(request):
+    """S1 — My sessions (§7.2)."""
     if not _require_role(request, Role.SUPERVISOR):
         return redirect("home")
-    return render(request, "screens/s1_my_sessions.html", {"sessions": []})
+
+    mine = Session.objects.filter(supervisor=request.user).select_related("supervisor")
+    return render(
+        request,
+        "screens/s1_my_sessions.html",
+        {
+            "sessions": mine,
+            "upcoming": [s for s in mine if not s.has_ended(request.now)],
+            "past": [s for s in mine if s.has_ended(request.now)],
+        },
+    )
 
 
 @login_required
 def admin_home(request):
+    """A1 — All sessions (§7.3). Filters arrive with the admin slice."""
     if not _require_role(request, Role.ADMIN):
         return redirect("home")
-    return render(request, "screens/a1_all_sessions.html", {"sessions": []})
+
+    everything = Session.objects.all().select_related("supervisor")
+    return render(
+        request,
+        "screens/a1_all_sessions.html",
+        {
+            "sessions": everything,
+            "upcoming": [s for s in everything if not s.has_ended(request.now)],
+            "past": [s for s in everything if s.has_ended(request.now)],
+        },
+    )
+
+
+# --- S2 — offer / edit / cancel a session (§7.2, §6.1, §6.3, §6.5) --------
+
+
+def _may_manage(user, session=None) -> bool:
+    """§3 — a supervisor manages their own sessions, an admin manages anyone's."""
+    if user.is_admin:
+        return True
+    if not user.is_supervisor:
+        return False
+    return session is None or session.supervisor_id == user.pk
+
+
+def _cap_decision(check, editor, locale):
+    """What the weekly cap (§6.1) has to say, in the words of §7.4.
+
+    Three different answers, and conflating them would be a mistake: an admin is
+    always allowed through after confirming (§6.1), enforcement on is a block a
+    supervisor cannot argue with, and enforcement off is a warning they can.
+    """
+    if not check.would_exceed:
+        return None
+
+    listed = {
+        "count": len(check.clashing),
+        "sessions": session_service.describe_sessions(check.clashing, locale),
+    }
+
+    if editor.is_admin:
+        return {
+            "confirmable": True,
+            "message": t("confirm.cap_override", locale, cap=check.cap),
+            "clashing": check.clashing,
+        }
+    if check.enforced:
+        return {
+            "confirmable": False,
+            "message": t("err.week_full", locale, **listed),
+            "clashing": check.clashing,
+        }
+    return {
+        "confirmable": True,
+        "message": t("warn.week_full", locale, **listed),
+        "clashing": check.clashing,
+    }
+
+
+@login_required
+def session_new(request):
+    if not _may_manage(request.user):
+        return redirect("home")
+    return _session_form(request, session=None)
+
+
+@login_required
+def session_edit(request, pk):
+    session = get_object_or_404(Session, pk=pk)
+    if not _may_manage(request.user, session):
+        return redirect("home")
+    # §6.5 — supervisors edit upcoming sessions. A session that has started is
+    # cancelled (§6.3) or reviewed (§6.4); it is not rescheduled underneath the
+    # people sitting in it.
+    if not session.is_upcoming(request.now):
+        return redirect("home")
+    return _session_form(request, session=session)
+
+
+def _session_form(request, session):
+    form_kwargs = {
+        "editor": request.user,
+        "now": request.now,
+        "locale": request.locale,
+        "instance": session,
+    }
+
+    if request.method != "POST":
+        return render(
+            request,
+            "screens/s2_session_form.html",
+            {"form": SessionForm(**form_kwargs), "session": session},
+        )
+
+    form = SessionForm(request.POST, **form_kwargs)
+    decision = None
+
+    if form.is_valid():
+        settings = Settings.load()
+        check = session_service.check_weekly_cap(
+            form.cleaned_data["date"], settings, exclude=session
+        )
+        decision = _cap_decision(check, request.user, request.locale)
+        confirmed = request.POST.get("confirm_week") == "1"
+
+        if decision is None or (decision["confirmable"] and confirmed):
+            fields = dict(form.cleaned_data)
+            supervisor = fields.pop("supervisor", None) or (
+                session.supervisor if session else request.user
+            )
+            if session is None:
+                session_service.create_session(
+                    supervisor=supervisor, now=request.now, **fields
+                )
+            else:
+                session_service.update_session(
+                    session, now=request.now, supervisor=supervisor, **fields
+                )
+            return redirect(HOME_BY_ROLE[request.user.role])
+
+    return render(
+        request,
+        "screens/s2_session_form.html",
+        {"form": form, "session": session, "cap": decision},
+    )
+
+
+@login_required
+def session_cancel(request, pk):
+    """§6.3 — cancellable until the end time, including while in progress."""
+    session = get_object_or_404(Session, pk=pk)
+    if not _may_manage(request.user, session) or not session.can_be_cancelled(
+        request.now
+    ):
+        return redirect("home")
+
+    if request.method != "POST":
+        return render(
+            request, "screens/s2_cancel_session.html", {"session": session}
+        )
+
+    session_service.cancel_session(session, by=request.user, now=request.now)
+    return redirect(HOME_BY_ROLE[request.user.role])

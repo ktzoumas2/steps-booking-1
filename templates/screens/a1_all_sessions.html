@@ -1,15 +1,59 @@
 {% extends "base.html" %}
-{% load copy %}
+{% load copy display %}
 
-{# A1 — All sessions (§7.3). On an empty database this points at A3, because
-   people come before sessions; the link appears with the People screen. #}
+{# A1 — All sessions (§7.3). The date-range, supervisor and state filters — and
+   the `noch nicht geprüft` one that drives a billing run — arrive with the
+   admin slice. On an empty database this points at A3: people come first. #}
 
 {% block title %}{% t "a1.title" %} · {% t "app.name" %}{% endblock %}
 
 {% block content %}
-  <h1>{% t "a1.title" %}</h1>
+  <div class="page-head">
+    <h1>{% t "a1.title" %}</h1>
+    <a class="button button--primary" href="{% url 'session_new' %}">{% t "s1.offer" %}</a>
+  </div>
 
   {% if not sessions %}
     <p class="empty">{% t "empty.no_sessions_at_all" %}</p>
+  {% else %}
+    {% if upcoming %}
+      <h2>{% t "s1.upcoming" %}</h2>
+      <ul class="sessions">
+        {% for session in upcoming %}
+          <li class="session {% if session.is_cancelled %}session--cancelled{% endif %}">
+            <div class="session__when">{% when session %}</div>
+            <div class="session__facts">
+              {% duration session %} · {% where session %} · {{ session.supervisor.full_name }}
+              {% if session.is_cancelled %} · {% t "s1.not_held" %}{% endif %}
+            </div>
+            {% if not session.is_cancelled %}
+              <div class="session__actions">
+                <a class="button" href="{% url 'session_edit' session.pk %}">{% t "s2.title_edit" %}</a>
+                <a class="button" href="{% url 'session_cancel' session.pk %}">{% t "s2.cancel_session" %}</a>
+              </div>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+
+    {% if past %}
+      <h2>{% t "s1.past" %}</h2>
+      <ul class="sessions">
+        {% for session in past %}
+          <li class="session {% if session.is_cancelled %}session--cancelled{% endif %}">
+            <div class="session__when">{% when session %}</div>
+            <div class="session__facts">
+              {% duration session %} · {% where session %} · {{ session.supervisor.full_name }}
+              {% if session.is_cancelled %}
+                · {% t "s1.not_held" %}
+              {% elif not session.is_reviewed %}
+                · <span class="quiet">{% t "p3.not_reviewed" %}</span>
+              {% endif %}
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
   {% endif %}
 {% endblock %}

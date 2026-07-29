@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% load copy display %}
+
+{# §6.3 — calling a session off. A cancelled session cannot be reopened, so the
+   consequence is spelled out before the button, not after it. #}
+
+{% block title %}{% t "s2.cancel_session" %} · {% t "app.name" %}{% endblock %}
+
+{% block content %}
+  <div class="panel panel--narrow">
+    <h1>{% t "s2.cancel_session" %}</h1>
+
+    <p class="session__when">{% when session %}</p>
+    <p class="session__facts">{% duration session %} · {% where session %}</p>
+
+    <p class="notice notice--warning">{% t "s2.cancel_confirm" %}</p>
+
+    <form method="post" class="form">
+      {% csrf_token %}
+      <div class="form__actions">
+        <button type="submit" class="button button--primary">{% t "s2.cancel_session" %}</button>
+        <a class="button" href="{% url 'home' %}">{% t "action.back" %}</a>
+      </div>
+    </form>
+  </div>
+{% endblock %}

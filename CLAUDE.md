@@ -20,15 +20,29 @@ something, say so and get it decided — don't resolve it silently in code.
 
 ## Status
 
-**Runs locally, and you can sign into it.** Django 5.2.16 on Python 3.13.13,
-installed with `uv`. What exists: the layout below, the `User`, `LoginToken` and
-`EmailLog` models (§4.1, §4.5, §4.6), the injected clock (§11), the §14 copy
-catalog with a test that keeps it and the spec identical, `create_admin` (§5.1),
-magic-link sign-in (§5), the language toggle (§10), and the three role home
-screens showing their real empty states. Acceptance criteria 1–6, 67 and 68 pass.
+**Runs locally: sign in, offer sessions, see them.** Django 5.2.16 on Python
+3.13.13, installed with `uv`. Models: `User`, `LoginToken`, `EmailLog`,
+`Settings`, `Session` (§4.1–4.6). Screens: sign-in, S1, S2 (offer/edit/cancel),
+and read-only P1 and A1 lists. Plus the injected clock (§11), the §14 catalog
+with a test that keeps it and the spec identical, `create_admin` (§5.1), the
+weekly cap with its block/warn/override paths (§6.1), and four of the eight
+mails in §8.1. Acceptance criteria 1–6, 8–14, 50–51, 65, 67, 68 pass.
 
-Not built yet: the `Session` and `Registration` models, and every screen that
-needs them — which is most of §7.
+Not built yet: `Registration`, and every screen and rule that needs it — sign-up,
+seats, the review screen, the counts and the exports.
+
+**Known gaps, deliberate and recorded rather than forgotten:**
+
+- **§14 has no weekday or month names.** §10 specifies the date *formats* and an
+  example of each, but no table of names, and dates cannot be rendered without
+  them. They live in `supervision/formatting.py` — the one place this app holds
+  user-facing copy outside the catalog — and belong in a §14.11.
+- **The weekly cap is checked on save only.** §7.2 also wants it inline as soon
+  as the date is picked, which needs a little client-side scripting.
+- **Capacity cannot yet be validated against registrations** (§6.5, criterion
+  25) — there are no registrations. It goes in with them.
+- **`session_created` carries no link to the session**: P2 does not exist, and
+  what this app's base URL is depends on hosting (§13 question 8).
 
 The first version is meant to cover **all twelve screens** (P1–P3, S1–S5, A1–A4)
 with sign-up, offering a session, the weekly cap, review and counts working, and
@@ -46,7 +60,8 @@ Agreed 2026-07-29. Each slice ends somewhere clickable, and the numbers are
 2. ~~Magic link, sessions, roles, sign-out, language toggle~~ — done (3–6, 67,
    and 68 for the one mail that exists). Criterion 7 needs A3 and moved to
    slice 9.
-3. Supervisor: offer / edit / cancel a session, weekly cap (8–14)
+3. ~~Supervisor: offer / edit / cancel a session, weekly cap~~ — done (8–14,
+   and 50, 51, 65 came along with cancelling and the derived state)
 4. Participant: browse, filter, week grouping, empty states (15–20)
 5. Sign-up, capacity, the last-seat race, cancellation (21–25)
 6. Review screen and the assumed-held default (43–54)
@@ -102,7 +117,7 @@ uv run manage.py create_admin \
     --first-name X --last-name Y --email z@example.org
                                           # the install-time admin (§5.1)
 uv run manage.py seed_demo                # NOT BUILT YET — the §12.2 fixture
-uv run manage.py runserver                # runs, but there are no screens yet
+uv run manage.py runserver                # http://127.0.0.1:8000
 ```
 
 Locally, email is written to the console — including magic links, which is how
@@ -115,10 +130,17 @@ config/         Django project — settings, urls, wsgi
 supervision/    the single app
   clock.py        §11 — the injected clock, plus Berlin wall-clock and ISO-week helpers
   catalog.py      §14 — every user-facing string, both languages
+  formatting.py   §10 — date and time formats (and the weekday names §14 lacks)
   models.py       §4 — the data model
+  sessions.py     §6.1, §6.3, §6.5 — the weekly cap, create / update / cancel
+  signin.py       §5 — magic-link issue and redemption
+  mail.py         §8.1 — one sender for every kind of mail
+  forms.py        S2, with the validation of §7.4
+  views.py        the screens of §7
   auth_backends.py  §5 — session loading for magic-link sign-in
   management/commands/create_admin.py   §5.1
-  templatetags/copy.py   {% t "key" %}
+  templatetags/copy.py     {% t "key" %}
+  templatetags/display.py  {% when %} {% where %} {% duration %}
 templates/      base templates shared across the app
 static/         css; no build step, no bundler
 tests/          acceptance criteria from §12.3

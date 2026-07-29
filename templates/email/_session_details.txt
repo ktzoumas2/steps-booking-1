@@ -1,0 +1,5 @@
+{% load copy display %}{% t "s2.date" %}: {% on_date session %}
+{% t "s2.start_time" %}: {% at_time session %} ({% duration session %})
+{% t "s2.mode" %}: {% where session %}{% if session.mode == "online" and zoom_url %}
+{% t "p2.zoom_link" %}: {{ zoom_url }}{% endif %}
+{% t "label.supervisor" %}: {{ session.supervisor.full_name }}{% if session.supervisor.focus_area %} ({{ session.supervisor.focus_area }}){% endif %}

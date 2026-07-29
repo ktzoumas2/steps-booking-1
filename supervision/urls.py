@@ -12,4 +12,7 @@ urlpatterns = [
     path("sessions/", views.participant_home, name="participant_home"),
     path("my-sessions/", views.supervisor_home, name="supervisor_home"),
     path("all-sessions/", views.admin_home, name="admin_home"),
+    path("sessions/new/", views.session_new, name="session_new"),
+    path("sessions/<int:pk>/edit/", views.session_edit, name="session_edit"),
+    path("sessions/<int:pk>/cancel/", views.session_cancel, name="session_cancel"),
 ]

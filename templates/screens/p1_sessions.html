@@ -1,10 +1,9 @@
 {% extends "base.html" %}
-{% load copy %}
+{% load copy display %}
 
 {# P1 — Sessions (§7.1), the participant's landing screen.
-   The Available/My sessions/My participation tabs, the supervisor filter and
-   the week groupings arrive with the slices that build them; what is here is
-   the tab that matters on an empty database, showing the empty state of §14.8. #}
+   The three tabs, the supervisor filter, the week groupings, the seat counts
+   and the one-tap `Anmelden` arrive with the slices that build them. #}
 
 {% block title %}{% t "p1.tab_available" %} · {% t "app.name" %}{% endblock %}
 
@@ -13,5 +12,20 @@
 
   {% if not sessions %}
     <p class="empty">{% t "empty.no_sessions" %}</p>
+  {% else %}
+    <ul class="sessions">
+      {% for session in sessions %}
+        <li class="session">
+          <div class="session__when">{% when session %}</div>
+          <div class="session__facts">{% duration session %} · {% where session %}</div>
+          <div class="session__supervisor">
+            {{ session.supervisor.full_name }}
+            {% if session.supervisor.focus_area %}
+              <span class="quiet">· {{ session.supervisor.focus_area }}</span>
+            {% endif %}
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
   {% endif %}
 {% endblock %}

@@ -9,9 +9,14 @@ untestable. Every record-keeping timestamp is passed in.
 from __future__ import annotations
 
 import datetime as dt
+import uuid
 
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models.functions import Lower
+
+from supervision.clock import wall_clock_to_instant
+from supervision.sending import sending_domain
 
 
 class Role(models.TextChoices):
@@ -162,6 +167,176 @@ class LoginToken(models.Model):
         return self.used_at is not None
 
 
+class Settings(models.Model):
+    """§4.4 — a single row of programme-wide settings, edited at A4 (§7.3).
+
+    The defaults for duration and capacity are placeholders confirmed with
+    nobody yet (D9, §13 question 1); they are settings precisely so that being
+    wrong about them costs nothing.
+    """
+
+    SINGLETON_PK = 1
+
+    # §4.2 — online sessions carry no per-session link. The URL lives here once
+    # and is read at display and send time, so changing it fixes every future
+    # session at once.
+    zoom_url = models.URLField(max_length=500, blank=True, default="")
+    default_duration_minutes = models.PositiveIntegerField(default=90)
+    default_capacity = models.PositiveIntegerField(default=5)
+    weekly_session_cap = models.PositiveIntegerField(default=2)
+    enforce_weekly_cap = models.BooleanField(default=True)
+    reminder_lead_hours = models.PositiveIntegerField(default=24)
+
+    class Meta:
+        verbose_name_plural = "settings"
+
+    def __str__(self) -> str:
+        return "settings"
+
+    def save(self, *args, **kwargs):
+        self.pk = self.SINGLETON_PK
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def load(cls) -> "Settings":
+        """The settings row, created with §4.4's defaults if it is not there yet."""
+        instance, _ = cls.objects.get_or_create(pk=cls.SINGLETON_PK)
+        return instance
+
+
+class Mode(models.TextChoices):
+    """§4.2. The labels users see are `s2.mode_online` / `s2.mode_in_person`."""
+
+    ONLINE = "online", "Online"
+    IN_PERSON = "in_person", "In person"
+
+
+class SessionStatus(models.TextChoices):
+    """§4.2. Everything else about a session's state is derived, not stored."""
+
+    OFFERED = "offered", "Offered"
+    CANCELLED = "cancelled", "Cancelled"
+
+
+def generate_calendar_uid() -> str:
+    """§4.2, §8.2 — generated once at creation, never reused or changed.
+
+    A stable UID is the only thing that makes a calendar client *replace* an
+    event rather than add a second one, so it must survive every edit.
+    """
+    return f"{uuid.uuid4()}@{sending_domain()}"
+
+
+class Session(models.Model):
+    """§4.2 — one scheduled supervision meeting.
+
+    `date` and `start_time` are separate fields on purpose (§15.1): they are a
+    wall-clock intention in Europe/Berlin, and a 10:00 session stays at 10:00
+    across a DST change. The actual instant is derived, never stored.
+    """
+
+    supervisor = models.ForeignKey(
+        User, on_delete=models.PROTECT, related_name="sessions_held"
+    )
+    date = models.DateField()
+    start_time = models.TimeField()
+    duration_minutes = models.PositiveIntegerField()
+    mode = models.CharField(max_length=20, choices=Mode)
+    room = models.CharField(max_length=100, blank=True, default="")
+    capacity = models.PositiveIntegerField()
+    status = models.CharField(
+        max_length=20, choices=SessionStatus, default=SessionStatus.OFFERED
+    )
+    cancelled_at = models.DateTimeField(null=True, blank=True)
+    cancelled_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="sessions_cancelled",
+    )
+    # null = nobody has reviewed it, which still counts as held once the end
+    # time has passed (§6.4, D29). Never write this to mean "it happened".
+    took_place = models.BooleanField(null=True, blank=True)
+    confirmed_at = models.DateTimeField(null=True, blank=True)
+    confirmed_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="sessions_reviewed",
+    )
+    calendar_uid = models.CharField(
+        max_length=200, unique=True, default=generate_calendar_uid
+    )
+    calendar_sequence = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField()
+    updated_at = models.DateTimeField()
+
+    class Meta:
+        ordering = ["date", "start_time"]
+        indexes = [models.Index(fields=["date", "status"])]
+
+    def __str__(self) -> str:
+        return f"{self.date} {self.start_time:%H:%M} · {self.supervisor.last_name}"
+
+    def clean(self):
+        if self.supervisor_id and self.supervisor.role != Role.SUPERVISOR:
+            raise ValidationError({"supervisor": "Sessions are held by supervisors."})
+
+    # --- Derived state (§4.2). None of this is stored; all of it is computed. ---
+
+    @property
+    def starts_at(self) -> dt.datetime:
+        return wall_clock_to_instant(self.date, self.start_time)
+
+    @property
+    def ends_at(self) -> dt.datetime:
+        return self.starts_at + dt.timedelta(minutes=self.duration_minutes)
+
+    @property
+    def is_cancelled(self) -> bool:
+        return self.status == SessionStatus.CANCELLED
+
+    def has_ended(self, now: dt.datetime) -> bool:
+        return now >= self.ends_at
+
+    def is_upcoming(self, now: dt.datetime) -> bool:
+        return not self.is_cancelled and now < self.starts_at
+
+    def is_in_progress(self, now: dt.datetime) -> bool:
+        return not self.is_cancelled and self.starts_at <= now < self.ends_at
+
+    def is_held(self, now: dt.datetime) -> bool:
+        """§6.4 — ended and nobody said otherwise. Written `is not False`, never
+        `is True`: `null` means "no claim either way", and that counts.
+        """
+        return (
+            not self.is_cancelled
+            and self.has_ended(now)
+            and self.took_place is not False
+        )
+
+    @property
+    def is_not_held(self) -> bool:
+        return self.took_place is False
+
+    @property
+    def is_reviewed(self) -> bool:
+        """§2 — whether a human has opened it and saved it. Never affects a count."""
+        return self.confirmed_at is not None
+
+    def can_be_cancelled(self, now: dt.datetime) -> bool:
+        """§6.3 — any time until the end time, including while in progress.
+
+        Deliberately open past the start: the commonest cancellation, supervisor
+        ill, is acted on around the start time, and closing the door there would
+        leave participants waiting with a live calendar entry and nobody able to
+        do anything about it.
+        """
+        return not self.is_cancelled and now < self.ends_at
+
+
 class EmailKind(models.TextChoices):
     """§8.1. Every one of these is a synchronous reply to something a person did,
     the sole exception being `reminder`, which the provider holds until it is due
@@ -185,11 +360,16 @@ class EmailLog(models.Model):
     answering "was this person ever sent a REQUEST for this session?" (§8.3,
     which decides whether they may be sent a CANCEL) and, for `login`, carrying
     the rate limit of §5.5 without storing anything §4 does not already name.
-
-    The `session` foreign key of §4.6 arrives with the Session model itself.
     """
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="emails")
+    session = models.ForeignKey(
+        Session,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="emails",
+    )
     kind = models.CharField(max_length=32, choices=EmailKind)
     sent_at = models.DateTimeField()
 

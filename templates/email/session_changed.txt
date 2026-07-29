@@ -1,0 +1,3 @@
+{% load copy %}{% t "email.session_changed.body" old=change.before new=change.after %}
+
+{% include "email/_session_details.txt" %}

@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% load copy display %}
+
+{# S2 — Offer / edit a session (§7.2).
+
+   §7.2 also asks for the weekly-cap check to run inline as soon as the date is
+   picked, so the block is never a surprise at the end. That needs a little
+   client-side scripting; the save-time check below is complete without it. #}
+
+{% block title %}{% if session %}{% t "s2.title_edit" %}{% else %}{% t "s2.title_new" %}{% endif %} · {% t "app.name" %}{% endblock %}
+
+{% block content %}
+  <h1>{% if session %}{% t "s2.title_edit" %}{% else %}{% t "s2.title_new" %}{% endif %}</h1>
+
+  {% if cap %}
+    {# §7.4, D41 — the clashing sessions are named, because the supervisor's
+       next action is picking a different week and they cannot do that without
+       knowing what is already in this one. #}
+    <div class="notice {% if cap.confirmable %}notice--warning{% else %}notice--error{% endif %}" role="alert">
+      <p>{{ cap.message }}</p>
+      <ul class="clashing">
+        {% for clash in cap.clashing %}
+          <li>{% when clash %} · {{ clash.supervisor.full_name }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+
+  <div class="panel">
+    <form method="post" class="form">
+      {% csrf_token %}
+
+      {% for field in form %}
+        <div class="field {% if field.errors %}field--invalid{% endif %}">
+          <label for="{{ field.id_for_label }}">
+            {% if field.name == "supervisor" %}{% t "label.supervisor" %}
+            {% elif field.name == "date" %}{% t "s2.date" %}
+            {% elif field.name == "start_time" %}{% t "s2.start_time" %}
+            {% elif field.name == "duration_minutes" %}{% t "s2.duration" %}
+            {% elif field.name == "mode" %}{% t "s2.mode" %}
+            {% elif field.name == "room" %}{% t "s2.room" %}
+            {% elif field.name == "capacity" %}{% t "s2.capacity" %}
+            {% endif %}
+          </label>
+          {{ field }}
+          {% for error in field.errors %}
+            <p class="field__error" role="alert">{{ error }}</p>
+          {% endfor %}
+        </div>
+      {% endfor %}
+
+      {% if cap.confirmable %}
+        <input type="hidden" name="confirm_week" value="1">
+      {% endif %}
+
+      <div class="form__actions">
+        <button type="submit" class="button button--primary">{% t "s2.submit" %}</button>
+        <a class="button" href="{% url 'home' %}">{% t "action.cancel" %}</a>
+      </div>
+    </form>
+  </div>
+
+  {% if session %}
+    <p class="danger-zone">
+      <a class="button" href="{% url 'session_cancel' session.pk %}">{% t "s2.cancel_session" %}</a>
+    </p>
+  {% endif %}
+{% endblock %}

@@ -1,0 +1,3 @@
+{% comment %}§8.1 — session details, and a link to the session. The link waits
+for P2 to exist and for hosting to settle what this app's base URL is.{% endcomment %}
+{% include "email/_session_details.txt" %}

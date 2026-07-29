@@ -23,7 +23,7 @@ from django.core.mail import EmailMessage
 from django.template.loader import render_to_string
 
 from supervision.catalog import t
-from supervision.models import EmailLog, User
+from supervision.models import EmailLog, Settings, User
 
 
 def _message_id() -> str:
@@ -44,6 +44,7 @@ def send(
     *,
     user: User,
     now: dt.datetime,
+    session=None,
     subject_params: dict | None = None,
     **context,
 ) -> EmailLog:
@@ -51,7 +52,15 @@ def send(
     subject = t(f"email.{kind}.subject", user.locale, **(subject_params or {}))
     body = render_to_string(
         f"email/{kind}.txt",
-        {"locale": user.locale, "recipient": user, **context},
+        {
+            "locale": user.locale,
+            "recipient": user,
+            "session": session,
+            # §4.2 — read at send time, so changing the setting fixes every
+            # future mail at once rather than only the ones sent afterwards.
+            "zoom_url": Settings.load().zoom_url if session is not None else "",
+            **context,
+        },
     )
 
     message = EmailMessage(
@@ -63,4 +72,6 @@ def send(
     )
     message.send()
 
-    return EmailLog.objects.create(user=user, kind=kind, sent_at=now)
+    return EmailLog.objects.create(
+        user=user, session=session, kind=kind, sent_at=now
+    )

@@ -204,6 +204,108 @@ a {
   border-color: var(--line);
 }
 
+/* Sessions ---------------------------------------------------------------- */
+
+.page-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+h2 {
+  font-size: 1.05rem;
+  color: var(--ink-quiet);
+  margin: 1.75rem 0 0.5rem;
+}
+
+.sessions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.session {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1rem;
+}
+
+.session--cancelled {
+  opacity: 0.65;
+}
+
+.session--cancelled .session__when {
+  text-decoration: line-through;
+}
+
+.session__when {
+  font-weight: 600;
+}
+
+.session__facts,
+.session__supervisor {
+  color: var(--ink-quiet);
+  font-size: 0.95rem;
+}
+
+.session__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.quiet {
+  color: var(--ink-quiet);
+}
+
+.clashing {
+  margin: 0.5rem 0 0;
+  padding-left: 1.25rem;
+}
+
+.form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.field select,
+.field input[type="date"],
+.field input[type="time"],
+.field input[type="number"] {
+  width: 100%;
+  min-height: 44px;
+  padding: 0.5rem 0.75rem;
+  font: inherit;
+  color: inherit;
+  background: var(--paper);
+  border: 1px solid var(--ink-quiet);
+  border-radius: var(--radius);
+}
+
+.field--invalid input,
+.field--invalid select {
+  border-color: var(--error);
+  border-width: 2px;
+}
+
+.field__error {
+  color: var(--error);
+  margin: 0.35rem 0 0;
+  font-size: 0.95rem;
+}
+
+.danger-zone {
+  margin-top: 2rem;
+}
+
 /* Notices ----------------------------------------------------------------- */
 
 .notice {
@@ -216,6 +318,16 @@ a {
   color: var(--error);
   background: #fdf3f4;
   border: 1px solid var(--error);
+}
+
+.notice--warning {
+  color: #6b4708;
+  background: #fdf6e3;
+  border: 1px solid #b8860b;
+}
+
+.notice p {
+  margin: 0;
 }
 
 @media (min-width: 40rem) {
