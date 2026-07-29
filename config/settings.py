@@ -37,6 +37,9 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    # Both read from the request and must run after it has a user (§10, §11).
+    "supervision.middleware.ClockMiddleware",
+    "supervision.middleware.LocaleMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -49,7 +52,9 @@ TEMPLATES = [
         "OPTIONS": {
             "context_processors": [
                 "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "supervision.context.app",
             ],
         },
     },
@@ -77,6 +82,8 @@ AUTHENTICATION_BACKENDS = ["supervision.auth_backends.MagicLinkBackend"]
 # §5.4 — the signed-in session lasts 30 days with a sliding expiry.
 SESSION_COOKIE_AGE = 30 * 24 * 60 * 60
 SESSION_SAVE_EVERY_REQUEST = True
+
+LOGIN_URL = "/sign-in/"
 
 # §11 — sessions are wall-clock in Europe/Berlin; record-keeping timestamps are
 # UTC instants, which is what USE_TZ gives us.

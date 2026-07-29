@@ -1,0 +1,44 @@
+{% load static copy %}<!doctype html>
+<html lang="{{ locale }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{% t "app.name" %}{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body>
+  <header class="header">
+    <a class="header__brand" href="{% url 'home' %}">{% t "app.name" %}</a>
+
+    <div class="header__actions">
+      {# §10 — the toggle sits in the same place on every screen. #}
+      <form method="post" action="{% url 'set_language' %}">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+        <input type="hidden" name="locale" value="{{ other_locale }}">
+        <button type="submit" class="button button--quiet">{% t "lang.switch" %}</button>
+      </form>
+
+      {# §5.7 — available, but not prominent. #}
+      {% if user.is_authenticated %}
+        <form method="post" action="{% url 'signout' %}">
+          {% csrf_token %}
+          <button type="submit" class="button button--quiet">{% t "action.sign_out" %}</button>
+        </form>
+      {% endif %}
+    </div>
+  </header>
+
+  {% if nav_items %}
+    <nav class="nav">
+      {% for item in nav_items %}
+        <a class="nav__item" href="{% url item.url_name %}">{% t item.key %}</a>
+      {% endfor %}
+    </nav>
+  {% endif %}
+
+  <main class="main">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

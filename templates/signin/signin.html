@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% load copy %}
+
+{% block title %}{% t "signin.title" %} · {% t "app.name" %}{% endblock %}
+
+{% block content %}
+  <div class="panel panel--narrow">
+    <h1>{% t "signin.title" %}</h1>
+    <p class="lede">{% t "signin.intro" %}</p>
+
+    <form method="post" action="{% url 'signin' %}" class="form">
+      {% csrf_token %}
+      <div class="field">
+        <label for="email">{% t "signin.email_label" %}</label>
+        <input type="email" id="email" name="email" required autocomplete="email"
+               autocapitalize="none" spellcheck="false" autofocus>
+      </div>
+      <button type="submit" class="button button--primary">{% t "signin.submit" %}</button>
+    </form>
+  </div>
+{% endblock %}

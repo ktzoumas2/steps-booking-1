@@ -20,13 +20,15 @@ something, say so and get it decided — don't resolve it silently in code.
 
 ## Status
 
-**Scaffolded; being built slice by slice.** Django 5.2.16 on Python 3.13.13,
-installed with `uv`. What exists so far: the project layout below, the custom
-`User` model (§4.1) and its first migration, the injected clock (§11), the §14
-copy catalog with a test that keeps it and the spec identical, and the
-install-time `create_admin` command (§5.1). Acceptance criteria 1 and 2 pass.
+**Runs locally, and you can sign into it.** Django 5.2.16 on Python 3.13.13,
+installed with `uv`. What exists: the layout below, the `User`, `LoginToken` and
+`EmailLog` models (§4.1, §4.5, §4.6), the injected clock (§11), the §14 copy
+catalog with a test that keeps it and the spec identical, `create_admin` (§5.1),
+magic-link sign-in (§5), the language toggle (§10), and the three role home
+screens showing their real empty states. Acceptance criteria 1–6, 67 and 68 pass.
 
-Nothing else is built yet: no other models, no views, no templates, no URLs.
+Not built yet: the `Session` and `Registration` models, and every screen that
+needs them — which is most of §7.
 
 The first version is meant to cover **all twelve screens** (P1–P3, S1–S5, A1–A4)
 with sign-up, offering a session, the weekly cap, review and counts working, and
@@ -41,7 +43,9 @@ Agreed 2026-07-29. Each slice ends somewhere clickable, and the numbers are
 §12.3 acceptance criteria.
 
 1. ~~Scaffold, user model, clock, catalog, `create_admin`~~ — done (1–2)
-2. Magic link, sessions, roles, sign-out, language toggle (3–7, 67)
+2. ~~Magic link, sessions, roles, sign-out, language toggle~~ — done (3–6, 67,
+   and 68 for the one mail that exists). Criterion 7 needs A3 and moved to
+   slice 9.
 3. Supervisor: offer / edit / cancel a session, weekly cap (8–14)
 4. Participant: browse, filter, week grouping, empty states (15–20)
 5. Sign-up, capacity, the last-seat race, cancellation (21–25)

@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% load copy %}
+
+{% block title %}{% t "signin.sent_title" %} · {% t "app.name" %}{% endblock %}
+
+{% block content %}
+  {# §5.2 — shown whether or not the address is registered. #}
+  <div class="panel panel--narrow">
+    <h1>{% t "signin.sent_title" %}</h1>
+    <p class="lede">{% t "signin.sent_body" %}</p>
+    <a class="button" href="{% url 'signin' %}">{% t "signin.request_new" %}</a>
+  </div>
+{% endblock %}

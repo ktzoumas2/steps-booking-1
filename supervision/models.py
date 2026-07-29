@@ -131,3 +131,71 @@ class User(models.Model):
     def get_username(self) -> str:
         return self.email
 
+
+class LoginToken(models.Model):
+    """§4.5 — a single-use magic link, valid 15 minutes (§5.3, D6).
+
+    The raw token is never stored: it exists only in the email that carries it
+    and in the URL the user clicks. What is kept is a SHA-256 hash, which is
+    enough to recognise a token presented back to us and useless to anyone who
+    reads the table.
+    """
+
+    VALIDITY = dt.timedelta(minutes=15)
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="login_tokens")
+    token_hash = models.CharField(max_length=64, unique=True)
+    expires_at = models.DateTimeField()
+    used_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-expires_at"]
+
+    def __str__(self) -> str:
+        return f"login token for {self.user.email}"
+
+    def is_expired(self, now: dt.datetime) -> bool:
+        return now >= self.expires_at
+
+    @property
+    def is_used(self) -> bool:
+        return self.used_at is not None
+
+
+class EmailKind(models.TextChoices):
+    """§8.1. Every one of these is a synchronous reply to something a person did,
+    the sole exception being `reminder`, which the provider holds until it is due
+    (§8.3). The app itself runs nothing on a timer.
+    """
+
+    LOGIN = "login", "Sign-in link"
+    INVITATION = "invitation", "Invitation"
+    REGISTRATION_CONFIRMED = "registration_confirmed", "Registration confirmed"
+    REGISTRATION_CANCELLED = "registration_cancelled", "Registration cancelled"
+    REMINDER = "reminder", "Reminder"
+    SESSION_CANCELLED = "session_cancelled", "Session cancelled"
+    SESSION_CHANGED = "session_changed", "Session changed"
+    SESSION_CREATED = "session_created", "Session created"
+
+
+class EmailLog(models.Model):
+    """§4.6 — a plain audit log, with no idempotency machinery.
+
+    Nothing here enforces send-once, because nothing needs to. Its jobs are
+    answering "was this person ever sent a REQUEST for this session?" (§8.3,
+    which decides whether they may be sent a CANCEL) and, for `login`, carrying
+    the rate limit of §5.5 without storing anything §4 does not already name.
+
+    The `session` foreign key of §4.6 arrives with the Session model itself.
+    """
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="emails")
+    kind = models.CharField(max_length=32, choices=EmailKind)
+    sent_at = models.DateTimeField()
+
+    class Meta:
+        ordering = ["-sent_at"]
+        indexes = [models.Index(fields=["user", "kind", "sent_at"])]
+
+    def __str__(self) -> str:
+        return f"{self.kind} to {self.user.email}"

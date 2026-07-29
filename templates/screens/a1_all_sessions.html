@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% load copy %}
+
+{# A1 — All sessions (§7.3). On an empty database this points at A3, because
+   people come before sessions; the link appears with the People screen. #}
+
+{% block title %}{% t "a1.title" %} · {% t "app.name" %}{% endblock %}
+
+{% block content %}
+  <h1>{% t "a1.title" %}</h1>
+
+  {% if not sessions %}
+    <p class="empty">{% t "empty.no_sessions_at_all" %}</p>
+  {% endif %}
+{% endblock %}

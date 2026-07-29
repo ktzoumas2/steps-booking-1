@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% load copy %}
+
+{# S1 — My sessions (§7.2). The `Termin anbieten` button that §7.2 makes the
+   focus of this empty state arrives with the screen it opens (S2). #}
+
+{% block title %}{% t "s1.title" %} · {% t "app.name" %}{% endblock %}
+
+{% block content %}
+  <h1>{% t "s1.title" %}</h1>
+
+  {% if not sessions %}
+    <p class="empty">{% t "empty.no_own_sessions" %}</p>
+  {% endif %}
+{% endblock %}

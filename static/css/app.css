@@ -1,0 +1,229 @@
+/* STEPS Supervision — one stylesheet, no build step, no bundler.
+ *
+ * Mobile-first (§11): the phone layout is the plain one and the desktop layout
+ * is the media query. Contrast, focus and tap targets follow the WCAG 2.1 AA
+ * target of §11 — 4.5:1 on text, a visible focus ring on everything focusable,
+ * and nothing tappable smaller than 44px.
+ */
+
+:root {
+  --ink: #1b1b1f;
+  --ink-quiet: #55555f;
+  --line: #d9d9e0;
+  --paper: #ffffff;
+  --canvas: #f4f4f7;
+  --accent: #1f4e79;      /* 8.6:1 on white */
+  --accent-dark: #163a5a;
+  --error: #a4262c;       /* 5.9:1 on white */
+  --radius: 10px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 17px;
+  line-height: 1.5;
+}
+
+h1 {
+  font-size: 1.5rem;
+  margin: 0 0 1rem;
+}
+
+a {
+  color: var(--accent);
+}
+
+:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Header ------------------------------------------------------------------ */
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
+}
+
+.header__brand {
+  font-weight: 600;
+  text-decoration: none;
+  color: var(--ink);
+}
+
+.header__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.header__actions form {
+  margin: 0;
+}
+
+/* Nav --------------------------------------------------------------------- */
+
+.nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  padding: 0 0.5rem;
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
+}
+
+.nav__item {
+  padding: 0.75rem 0.75rem;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  color: var(--ink);
+  text-decoration: none;
+  border-bottom: 3px solid transparent;
+}
+
+.nav__item:hover {
+  border-bottom-color: var(--line);
+}
+
+/* Layout ------------------------------------------------------------------ */
+
+.main {
+  padding: 1.25rem 1rem 3rem;
+  max-width: 44rem;
+  margin: 0 auto;
+}
+
+.panel {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+}
+
+.panel--narrow {
+  max-width: 26rem;
+  margin: 2rem auto;
+}
+
+.lede {
+  color: var(--ink-quiet);
+  margin-top: 0;
+}
+
+.empty {
+  background: var(--paper);
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+  color: var(--ink-quiet);
+  padding: 1.5rem;
+}
+
+/* Forms ------------------------------------------------------------------- */
+
+.form {
+  margin: 0;
+}
+
+.field {
+  margin-bottom: 1rem;
+}
+
+.field label {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-weight: 600;
+}
+
+.field input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0.5rem 0.75rem;
+  font: inherit;
+  color: inherit;
+  background: var(--paper);
+  border: 1px solid var(--ink-quiet);
+  border-radius: var(--radius);
+}
+
+/* Buttons ----------------------------------------------------------------- */
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0.5rem 1rem;
+  font: inherit;
+  text-decoration: none;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--ink-quiet);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.button--primary {
+  width: 100%;
+  color: #ffffff;
+  background: var(--accent);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+.button--primary:hover {
+  background: var(--accent-dark);
+}
+
+/* The language toggle and sign-out: present on every screen, and deliberately
+ * not competing with anything (§5.7). */
+.button--quiet {
+  min-height: 44px;
+  padding: 0.4rem 0.6rem;
+  color: var(--accent);
+  background: none;
+  border: 1px solid transparent;
+}
+
+.button--quiet:hover {
+  border-color: var(--line);
+}
+
+/* Notices ----------------------------------------------------------------- */
+
+.notice {
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+  margin: 0 0 1rem;
+}
+
+.notice--error {
+  color: var(--error);
+  background: #fdf3f4;
+  border: 1px solid var(--error);
+}
+
+@media (min-width: 40rem) {
+  .main {
+    padding-top: 2rem;
+  }
+
+  .button--primary {
+    width: auto;
+  }
+}
