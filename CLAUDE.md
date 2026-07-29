@@ -20,9 +20,13 @@ something, say so and get it decided — don't resolve it silently in code.
 
 ## Status
 
-**Decisions recorded, nothing implemented.** No code, no dependencies installed,
-no Django project scaffolded. The spec is now complete enough to build from:
-every screen's copy is in §14, the stack is in §15.
+**Scaffolded; being built slice by slice.** Django 5.2.16 on Python 3.13.13,
+installed with `uv`. What exists so far: the project layout below, the custom
+`User` model (§4.1) and its first migration, the injected clock (§11), the §14
+copy catalog with a test that keeps it and the spec identical, and the
+install-time `create_admin` command (§5.1). Acceptance criteria 1 and 2 pass.
+
+Nothing else is built yet: no other models, no views, no templates, no URLs.
 
 The first version is meant to cover **all twelve screens** (P1–P3, S1–S5, A1–A4)
 with sign-up, offering a session, the weekly cap, review and counts working, and
@@ -30,6 +34,32 @@ to run locally on SQLite. Deliberately out of that first version: calendar
 invites (§8.2), real email delivery, and reminder scheduling (§8.3) — all three
 wait on the hosting and provider decisions, and none is needed to see how the
 app looks and behaves.
+
+## Build order
+
+Agreed 2026-07-29. Each slice ends somewhere clickable, and the numbers are
+§12.3 acceptance criteria.
+
+1. ~~Scaffold, user model, clock, catalog, `create_admin`~~ — done (1–2)
+2. Magic link, sessions, roles, sign-out, language toggle (3–7, 67)
+3. Supervisor: offer / edit / cancel a session, weekly cap (8–14)
+4. Participant: browse, filter, week grouping, empty states (15–20)
+5. Sign-up, capacity, the last-seat race, cancellation (21–25)
+6. Review screen and the assumed-held default (43–54)
+7. Counts, P3, A2, the four CSVs, the export sign-off (55–65)
+8. Email bodies, the `.ics` builder, the two mail ports against fakes (26, 28–33)
+9. Admin people and settings, the deactivation rules (66)
+10. The §12.2 seed fixture — the data the demo is shown with
+
+Two things sit deliberately outside the numbering, both agreed 2026-07-29:
+
+- **The `.ics` builder is built now, in slice 8**, not deferred with the rest of
+  the calendar work. Generating the `VEVENT` is a pure function and needs no
+  provider; only verifying that a provider ships it unaltered does (§13 q7a).
+  It also makes P2's `Zum Kalender hinzufügen` work locally.
+- **A dev-only "sign in as" switch**, hard-gated on `DEBUG`, so showing three
+  roles to a user does not mean fishing magic links out of the terminal. The
+  real magic-link flow is built and tested regardless.
 
 ## Stack
 
@@ -58,30 +88,33 @@ Ask before adding a dependency beyond Django itself.
 
 ## Commands
 
-**Not yet verified — no code exists to run them against.** These are the intended
-commands; correct them against reality as soon as the project is scaffolded, and
-delete this warning then.
+Verified against the code, except where marked.
 
 ```
 uv sync                                   # install, pinned to Python 3.13
 uv run manage.py migrate                  # create/update the database
-uv run manage.py create_admin             # the install-time admin (§5.1)
-uv run manage.py seed_demo                # the §12.2 fixture — synthetic data only
-uv run manage.py runserver                # http://127.0.0.1:8000
 uv run manage.py test                     # the acceptance criteria (§12.3)
+uv run manage.py create_admin \
+    --first-name X --last-name Y --email z@example.org
+                                          # the install-time admin (§5.1)
+uv run manage.py seed_demo                # NOT BUILT YET — the §12.2 fixture
+uv run manage.py runserver                # runs, but there are no screens yet
 ```
 
 Locally, email is written to the console — including magic links, which is how
 you sign in without a mail provider (§15).
 
-## Planned layout
-
-Recorded so the "ask before adding a top-level directory" rule below is already
-satisfied when scaffolding starts:
+## Layout
 
 ```
-config/         Django project — settings, urls
-supervision/    the single app — models, views, forms, templates, commands
+config/         Django project — settings, urls, wsgi
+supervision/    the single app
+  clock.py        §11 — the injected clock, plus Berlin wall-clock and ISO-week helpers
+  catalog.py      §14 — every user-facing string, both languages
+  models.py       §4 — the data model
+  auth_backends.py  §5 — session loading for magic-link sign-in
+  management/commands/create_admin.py   §5.1
+  templatetags/copy.py   {% t "key" %}
 templates/      base templates shared across the app
 static/         css; no build step, no bundler
 tests/          acceptance criteria from §12.3
@@ -99,6 +132,10 @@ pyproject.toml  dependencies, Python pin
   local date + wall-clock time (a 10:00 session stays at 10:00 across DST);
   record-keeping timestamps are UTC instants. Weeks are ISO weeks, Mon–Sun.
   See `product-spec.md` §11.
+- **Never read the clock.** No `timezone.now()`, no `auto_now_add`, no
+  `auto_now`, no `datetime.now()` outside `supervision/clock.py`. The instant is
+  passed in — services take a `now` argument, the request layer resolves it once.
+  §11 requires it and every time-dependent acceptance criterion depends on it.
 - Personal data (names, contact details, appointment reasons) is GDPR-relevant.
   Do not log it, do not send it to third-party services, and do not commit real
   data or fixtures derived from it.

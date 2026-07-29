@@ -15,5 +15,15 @@
 .env.*
 !.env.example
 
-# Nothing below is in use yet — the stack is undecided (see CLAUDE.md).
-# Add build, dependency and coverage directories here once one is chosen.
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# Django — the local SQLite database. It holds only seeded, synthetic data
+# (§12.2), but it is a build artefact either way and never belongs in the repo.
+db.sqlite3
+db.sqlite3-journal
+
+# Collected static files, once there is a deployment that collects them.
+/staticfiles/
