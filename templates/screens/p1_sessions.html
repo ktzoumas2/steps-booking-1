@@ -39,12 +39,33 @@
       <h2 class="week">{{ week.heading }}</h2>
       <ul class="sessions">
         {% for session in week.sessions %}
-          <li class="session">
+          <li class="session {% if session.full and not session.i_am_registered %}session--full{% endif %}">
             <a class="session__link" href="{% url 'session_detail' session.pk %}">
               <div class="session__when">{% when session %}</div>
               <div class="session__facts">{% duration session %} · {% where session %}</div>
               <div class="session__supervisor">{{ session.supervisor.full_name }}{% if session.supervisor.focus_area %}<span class="quiet"> · {{ session.supervisor.focus_area }}</span>{% endif %}</div>
             </a>
+
+            <div class="session__seats">{% t "p1.seats" taken=session.taken capacity=session.capacity %}</div>
+
+            {# §7.1 — signing up happens from the list, one tap, no
+               intermediate screen. `next` brings the participant back to the
+               list they were reading, filter and all. #}
+            {% if session.i_am_registered %}
+              <form method="post" action="{% url 'session_give_up_place' session.pk %}">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                <button type="submit" class="button">{% t "p1.action_cancel" %}</button>
+              </form>
+            {% elif session.full %}
+              <button type="button" class="button" disabled>{% t "p1.action_full" %}</button>
+            {% else %}
+              <form method="post" action="{% url 'session_sign_up' session.pk %}">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                <button type="submit" class="button button--primary">{% t "p1.action_signup" %}</button>
+              </form>
+            {% endif %}
           </li>
         {% endfor %}
       </ul>

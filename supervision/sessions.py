@@ -10,6 +10,7 @@ import datetime as dt
 from dataclasses import dataclass, field
 
 from django.db import transaction
+from django.db.models import Count, Q
 
 from supervision import mail
 from supervision.clock import iso_week, week_bounds
@@ -102,9 +103,13 @@ def upcoming_sessions(now: dt.datetime):
     """
     return [
         session
-        for session in Session.objects.filter(
-            status=SessionStatus.OFFERED
-        ).select_related("supervisor")
+        for session in Session.objects.filter(status=SessionStatus.OFFERED)
+        .select_related("supervisor")
+        .annotate(
+            taken=Count(
+                "registrations", filter=Q(registrations__cancelled_at__isnull=True)
+            )
+        )
         if session.is_upcoming(now)
     ]
 

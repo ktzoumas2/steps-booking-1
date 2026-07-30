@@ -63,11 +63,21 @@ TEMPLATES = [
 WSGI_APPLICATION = "config.wsgi.application"
 
 # SQLite locally, Postgres in production (§15). No application difference:
-# SQLite inside a transaction satisfies §6.2's atomic last-seat check.
+# SQLite inside a transaction satisfies §6.2's atomic last-seat check — but only
+# with `transaction_mode: IMMEDIATE`. By default SQLite begins a *deferred*
+# transaction, which takes no write lock until the first write, so two
+# participants reading "one seat left" and then both inserting is a real race.
+# IMMEDIATE takes the write lock at BEGIN, which serialises them; `timeout`
+# makes the loser wait for the lock rather than fail. On Postgres the same
+# guarantee comes from the `select_for_update()` in supervision/registrations.py.
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": BASE_DIR / "db.sqlite3",
+        "OPTIONS": {
+            "transaction_mode": "IMMEDIATE",
+            "timeout": 20,
+        },
     }
 }
 

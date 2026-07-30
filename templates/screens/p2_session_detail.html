@@ -33,11 +33,33 @@
       {% endif %}
     </p>
 
+    {# §7.1 — who else is registered, by name. This is where you see that; the
+       invites never disclose it (§8.2, D19). #}
     {% if registered %}
       <h2>{% t "p2.registered_list" %}</h2>
       <ul class="people">
         {% for person in registered %}<li>{{ person.full_name }}</li>{% endfor %}
       </ul>
+    {% endif %}
+
+    {% if user.is_participant %}
+      <p class="session__seats">{% t "p1.seats" taken=registered|length capacity=session.capacity %}</p>
+
+      {% if i_am_registered %}
+        <form method="post" action="{% url 'session_give_up_place' session.pk %}">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <button type="submit" class="button">{% t "p1.action_cancel" %}</button>
+        </form>
+      {% elif is_full %}
+        <button type="button" class="button" disabled>{% t "p1.action_full" %}</button>
+      {% elif still_to_come %}
+        <form method="post" action="{% url 'session_sign_up' session.pk %}">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <button type="submit" class="button button--primary">{% t "p1.action_signup" %}</button>
+        </form>
+      {% endif %}
     {% endif %}
 
     <p><a class="button" href="{% url 'home' %}">{% t "action.back" %}</a></p>

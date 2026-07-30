@@ -1,0 +1,3 @@
+{% load copy %}{% t "email.registration_cancelled.body" %}
+
+{% include "email/_session_details.txt" %}

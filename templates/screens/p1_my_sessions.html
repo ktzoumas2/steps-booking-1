@@ -18,12 +18,20 @@
   {% else %}
     {% if upcoming %}
       <ul class="sessions">
-        {% for session in upcoming %}
+        {% for registration in upcoming %}
           <li class="session">
-            <a class="session__link" href="{% url 'session_detail' session.pk %}">
-              <div class="session__when">{% when session %}</div>
-              <div class="session__facts">{% duration session %} · {% where session %}</div>
+            <a class="session__link" href="{% url 'session_detail' registration.session.pk %}">
+              <div class="session__when">{% when registration.session %}</div>
+              <div class="session__facts">
+                {% duration registration.session %} · {% where registration.session %}
+                · {{ registration.session.supervisor.full_name }}
+              </div>
             </a>
+            <form method="post" action="{% url 'session_give_up_place' registration.session.pk %}">
+              {% csrf_token %}
+              <input type="hidden" name="next" value="{{ request.get_full_path }}">
+              <button type="submit" class="button">{% t "p1.action_cancel" %}</button>
+            </form>
           </li>
         {% endfor %}
       </ul>
@@ -32,12 +40,17 @@
     {% if past %}
       <h2>{% t "p1.past_sessions" %}</h2>
       <ul class="sessions">
-        {% for entry in past %}
+        {% for registration in past %}
           <li class="session">
-            <div class="session__when">{% when entry.session %}</div>
+            <div class="session__when">{% when registration.session %}</div>
             <div class="session__facts">
-              {% if entry.session.is_not_held %}{% t "s1.not_held" %}
-              {% elif entry.attended %}{% t "p1.attended" %}
+              {% duration registration.session %} · {{ registration.session.supervisor.full_name }}
+            </div>
+            <div class="session__facts">
+              {# §6.4 — a session that has ended took place, and everyone
+                 registered was there, unless somebody recorded otherwise. #}
+              {% if registration.session.is_not_held %}{% t "s1.not_held" %}
+              {% elif registration.counts_as_attended %}{% t "p1.attended" %}
               {% else %}{% t "p1.absent" %}{% endif %}
             </div>
           </li>

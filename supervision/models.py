@@ -326,6 +326,26 @@ class Session(models.Model):
         """§2 — whether a human has opened it and saved it. Never affects a count."""
         return self.confirmed_at is not None
 
+    # --- Seats (§6.2) ---------------------------------------------------------
+    #
+    # `seats_taken` is a query, so list screens annotate the count instead of
+    # asking once per row. These are for a single session in hand.
+
+    def active_registrations(self):
+        return self.registrations.filter(cancelled_at__isnull=True)
+
+    @property
+    def seats_taken(self) -> int:
+        return self.active_registrations().count()
+
+    @property
+    def is_full(self) -> bool:
+        return self.seats_taken >= self.capacity
+
+    def is_open_for_signup(self, now: dt.datetime) -> bool:
+        """§6.2 — offered, still to come, and not yet full."""
+        return self.is_upcoming(now) and not self.is_full
+
     def can_be_cancelled(self, now: dt.datetime) -> bool:
         """§6.3 — any time until the end time, including while in progress.
 
@@ -335,6 +355,84 @@ class Session(models.Model):
         do anything about it.
         """
         return not self.is_cancelled and now < self.ends_at
+
+
+class RegistrationSource(models.TextChoices):
+    """§4.3 — how the row came to exist.
+
+    The distinction matters exactly once, in `sessions_registered` (§9.1, D27):
+    counting supervisor-added rows would inflate the figure with the very
+    population it exists to measure against.
+    """
+
+    SELF_SIGNUP = "self_signup", "Signed up themselves"
+    ADDED_AT_CONFIRMATION = "added_at_confirmation", "Added when the session was reviewed"
+
+
+class Registration(models.Model):
+    """§4.3 — one participant's place in one session.
+
+    A cancelled row is kept rather than deleted: it explains why a seat freed
+    up. `attended = null` means nobody said otherwise, which counts as present
+    at a session that counts as held (§6.4) — never write it to mean "was here".
+    """
+
+    session = models.ForeignKey(
+        Session, on_delete=models.CASCADE, related_name="registrations"
+    )
+    user = models.ForeignKey(
+        User, on_delete=models.PROTECT, related_name="registrations"
+    )
+    source = models.CharField(
+        max_length=32, choices=RegistrationSource, default=RegistrationSource.SELF_SIGNUP
+    )
+    created_at = models.DateTimeField()
+    cancelled_at = models.DateTimeField(null=True, blank=True)
+    attended = models.BooleanField(null=True, blank=True)
+    attendance_recorded_at = models.DateTimeField(null=True, blank=True)
+    attendance_recorded_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="attendance_recorded",
+    )
+    # §8.3 — the provider's handle for this person's scheduled reminder, so it
+    # can be cancelled or rescheduled. Nothing writes it until the mail slice.
+    reminder_message_id = models.CharField(max_length=200, blank=True, default="")
+
+    class Meta:
+        ordering = ["created_at"]
+        constraints = [
+            # §4.3 — at most one *active* registration per (session, user). The
+            # condition is what allows the history: cancelling and signing up
+            # again must not be blocked by the row that explains the free seat.
+            models.UniqueConstraint(
+                fields=["session", "user"],
+                condition=models.Q(cancelled_at__isnull=True),
+                name="one_active_registration_per_person_per_session",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.user.email} → {self.session_id}"
+
+    def clean(self):
+        if self.user_id and self.user.role != Role.PARTICIPANT:
+            raise ValidationError({"user": "Only participants hold registrations."})
+
+    @property
+    def is_active(self) -> bool:
+        return self.cancelled_at is None
+
+    @property
+    def counts_as_attended(self) -> bool:
+        """§9.1 — written `is not False`, never `is True`.
+
+        Getting this backwards is the easiest way to break billing: it would
+        silently exclude every session nobody reviewed, which is most of them.
+        """
+        return self.is_active and self.attended is not False
 
 
 class EmailKind(models.TextChoices):

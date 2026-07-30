@@ -7,15 +7,22 @@ lists behind those empty states arrive with the Session model.
 
 from __future__ import annotations
 
+from django.contrib import messages
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
+from django.db.models import Count, Q
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
-from supervision import mail, sessions as session_service, signin
+from supervision import (
+    mail,
+    registrations as registration_service,
+    sessions as session_service,
+    signin,
+)
 from supervision.catalog import LOCALES, t
 from supervision.forms import SessionForm
 from supervision.middleware import LOCALE_COOKIE
@@ -138,6 +145,18 @@ def _require_role(request, role):
     return request.user.is_authenticated and request.user.role == role
 
 
+def _with_seat_counts(queryset):
+    """Sessions with `taken` annotated, so a list does not count once per row."""
+    return list(
+        queryset.select_related("supervisor").annotate(
+            taken=Count(
+                "registrations",
+                filter=Q(registrations__cancelled_at__isnull=True),
+            )
+        )
+    )
+
+
 # The supervisor filter outlives one page view: §7.1 asks for the choice to
 # persist across sign-ups, and a participant who signs up should come back to
 # the list they were reading, not to everything.
@@ -177,6 +196,16 @@ def participant_home(request):
         else upcoming
     )
 
+    # §7.1 — a full session stays visible, greyed, rather than disappearing: a
+    # participant who cannot find a session they were told about assumes the app
+    # is broken.
+    mine = registration_service.registered_session_ids(request.user)
+    for session in shown:
+        session.i_am_registered = session.pk in mine
+        # Not `is_full`: that is a model property which asks the database once
+        # per row. `taken` is already annotated on the queryset.
+        session.full = session.taken >= session.capacity
+
     return render(
         request,
         "screens/p1_sessions.html",
@@ -192,13 +221,20 @@ def participant_home(request):
 
 @login_required
 def participant_my_sessions(request):
-    """P1 — My sessions (§7.1). The lists behind it arrive with registrations."""
+    """P1 — My sessions (§7.1): upcoming first, then past ones with whether they
+    took place and whether the participant was marked present."""
     if not _require_role(request, Role.PARTICIPANT):
         return redirect("home")
+
+    mine = registration_service.registrations_for(request.user)
     return render(
         request,
         "screens/p1_my_sessions.html",
-        {"tab": "mine", "upcoming": [], "past": []},
+        {
+            "tab": "mine",
+            "upcoming": [r for r in mine if not r.session.has_ended(request.now)],
+            "past": [r for r in mine if r.session.has_ended(request.now)],
+        },
     )
 
 
@@ -227,7 +263,15 @@ def session_detail(request, pk):
     # link that never changes. The supervisor holding the session and the admin
     # see it too: they need it, and `p2.zoom_hidden` tells them to sign up for
     # something they cannot sign up for.
-    may_see_zoom = request.user.is_admin or session.supervisor_id == request.user.pk
+    registered = list(
+        session.active_registrations().select_related("user").order_by("created_at")
+    )
+    i_am_registered = any(r.user_id == request.user.pk for r in registered)
+    may_see_zoom = (
+        i_am_registered
+        or request.user.is_admin
+        or session.supervisor_id == request.user.pk
+    )
 
     return render(
         request,
@@ -236,9 +280,46 @@ def session_detail(request, pk):
             "session": session,
             "zoom_url": Settings.load().zoom_url,
             "may_see_zoom": may_see_zoom,
-            "registered": [],
+            "i_am_registered": i_am_registered,
+            "registered": [r.user for r in registered],
+            "is_full": len(registered) >= session.capacity,
+            "still_to_come": session.is_upcoming(request.now),
         },
     )
+
+
+# --- Signing up and giving up a place (§6.2, §6.3) ------------------------
+
+
+@login_required
+@require_POST
+def session_sign_up(request, pk):
+    """§7.1 — one tap, from the list, no intermediate screen."""
+    if not _require_role(request, Role.PARTICIPANT):
+        return redirect("home")
+
+    session = get_object_or_404(Session, pk=pk)
+    try:
+        registration_service.sign_up(session, request.user, request.now)
+    except registration_service.SignUpRefused as refusal:
+        # §7.4 — "this session just filled up", not a generic failure, which
+        # reads as a bug.
+        messages.error(request, t(refusal.copy_key, request.locale))
+    return _redirect_back(request)
+
+
+@login_required
+@require_POST
+def session_give_up_place(request, pk):
+    if not _require_role(request, Role.PARTICIPANT):
+        return redirect("home")
+
+    session = get_object_or_404(Session, pk=pk)
+    try:
+        registration_service.cancel_place(session, request.user, request.now)
+    except registration_service.SignUpRefused as refusal:
+        messages.error(request, t(refusal.copy_key, request.locale))
+    return _redirect_back(request)
 
 
 @login_required
@@ -247,7 +328,7 @@ def supervisor_home(request):
     if not _require_role(request, Role.SUPERVISOR):
         return redirect("home")
 
-    mine = Session.objects.filter(supervisor=request.user).select_related("supervisor")
+    mine = _with_seat_counts(Session.objects.filter(supervisor=request.user))
     return render(
         request,
         "screens/s1_my_sessions.html",
@@ -265,7 +346,7 @@ def admin_home(request):
     if not _require_role(request, Role.ADMIN):
         return redirect("home")
 
-    everything = Session.objects.all().select_related("supervisor")
+    everything = _with_seat_counts(Session.objects.all())
     return render(
         request,
         "screens/a1_all_sessions.html",

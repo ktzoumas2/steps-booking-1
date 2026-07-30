@@ -239,6 +239,34 @@ h2 {
   opacity: 0.65;
 }
 
+/* §7.1 — a full session stays visible, greyed, rather than disappearing: a
+ * participant who cannot find a session they were told about assumes the app is
+ * broken. Greyed, not hidden, and not so faint it fails contrast. */
+.session--full {
+  background: var(--canvas);
+}
+
+.session--full .session__when {
+  color: var(--ink-quiet);
+}
+
+.session__seats {
+  font-size: 0.95rem;
+  color: var(--ink-quiet);
+  margin: 0.5rem 0;
+}
+
+.session form {
+  margin: 0.5rem 0 0;
+}
+
+.button[disabled] {
+  color: var(--ink-quiet);
+  background: var(--canvas);
+  border-color: var(--line);
+  cursor: default;
+}
+
 .session--cancelled .session__when {
   text-decoration: line-through;
 }

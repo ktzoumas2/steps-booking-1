@@ -1,0 +1,5 @@
+{% comment %}§8.1 says this carries "session details + how to cancel", but §14.10
+gives only a subject for this mail — there is no body string, and the sentence
+explaining how to give up a place cannot be written without inventing copy.
+Details only for now; flagged in CLAUDE.md.{% endcomment %}
+{% include "email/_session_details.txt" %}

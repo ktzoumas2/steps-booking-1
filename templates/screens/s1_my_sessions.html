@@ -24,6 +24,7 @@
             <div class="session__when">{% when session %}</div>
             <div class="session__facts">
               {% duration session %} · {% where session %}
+              · {% t "s1.registered_count" count=session.taken %}
               {% if session.is_cancelled %} · {% t "s1.not_held" %}{% endif %}
             </div>
             {% if not session.is_cancelled %}
@@ -45,6 +46,7 @@
             <div class="session__when">{% when session %}</div>
             <div class="session__facts">
               {% duration session %} · {% where session %}
+              · {% t "s1.registered_count" count=session.taken %}
               {% if session.is_cancelled %}
                 · {% t "s1.not_held" %}
               {% elif not session.is_reviewed %}

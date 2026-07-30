@@ -70,6 +70,15 @@ class SessionForm(forms.ModelForm):
             raise forms.ValidationError(
                 t("err.capacity_below_registered", self.locale, count=1)
             )
+        # §6.5 — capacity can never be set below the number of active
+        # registrations. The message names that number, so the supervisor knows
+        # the floor rather than guessing at it (§7.4).
+        if self.instance.pk:
+            taken = self.instance.seats_taken
+            if capacity < taken:
+                raise forms.ValidationError(
+                    t("err.capacity_below_registered", self.locale, count=taken)
+                )
         return capacity
 
     def clean(self):

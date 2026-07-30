@@ -20,19 +20,17 @@ something, say so and get it decided — don't resolve it silently in code.
 
 ## Status
 
-**Runs locally: sign in, offer sessions, browse them.** Django 5.2.16 on Python
-3.13.13, installed with `uv`. Models: `User`, `LoginToken`, `EmailLog`,
-`Settings`, `Session` (§4.1–4.6). Screens: sign-in, P1 (all three tabs), P2, P3,
-S1, S2 (offer/edit/cancel), A1. Plus the injected clock (§11), the §14 catalog
-with a test that keeps it and the spec identical, `create_admin` (§5.1), the
-weekly cap with its block/warn/override paths (§6.1), week grouping and the
-supervisor filter (§7.1), and four of the eight mails in §8.1.
-Acceptance criteria 1–6, 8–17, 19, 20, 50, 51, 65, 67, 68 pass.
+**The core loop works: offer a session, sign up for it, give up the place.**
+Django 5.2.16 on Python 3.13.13, installed with `uv`. All of §4's models exist.
+Screens: sign-in, P1 (all three tabs), P2, P3, S1, S2 (offer/edit/cancel), A1.
+Plus the injected clock (§11), the §14 catalog with a test that keeps it and the
+spec identical, `create_admin` (§5.1), the weekly cap (§6.1), week grouping and
+the supervisor filter (§7.1), the atomic last seat (§6.2), and six of the eight
+mails in §8.1. Acceptance criteria 1–6, 8–25, 50, 51, 65, 67, 68 pass.
 
-Not built yet: `Registration`, and every screen and rule that needs it — sign-up,
-seats, the review screen, the counts and the exports. P1's My sessions and P3
-are built but permanently empty until then, which is why criterion 18 (a full
-session, greyed, reading `Ausgebucht`) waits for slice 5.
+Not built yet: the review screen (S3) and everything downstream of it — the
+counts, P3's real content, A2 and the exports. P3 therefore still shows a
+truthful 0.
 
 **Known gaps, deliberate and recorded rather than forgotten:**
 
@@ -50,10 +48,13 @@ session, greyed, reading `Ausgebucht`) waits for slice 5.
   §7.1 requires that screen (their name, and a way out); tidying the filter away
   would make criterion 19's second message unreachable. The current choice stays
   in the dropdown so the control still reflects its own state.
-- **Capacity cannot yet be validated against registrations** (§6.5, criterion
-  25) — there are no registrations. It goes in with them.
-- **`session_created` carries no link to the session**: P2 does not exist, and
-  what this app's base URL is depends on hosting (§13 question 8).
+- **§14.10 has no `email.registration_confirmed.body`.** §8.1 says that mail
+  carries "session details + how to cancel", but there is no string for the
+  second half, so the mail currently sends the details alone.
+- **Session mails carry no link to the session.** The `.ics` and the URL both
+  wait on hosting settling what this app's base URL is (§13 question 8).
+- **SQLite needs `transaction_mode: IMMEDIATE`** for §6.2's atomic last seat —
+  see the comment in `config/settings.py`. Do not remove it.
 
 The first version is meant to cover **all twelve screens** (P1–P3, S1–S5, A1–A4)
 with sign-up, offering a session, the weekly cap, review and counts working, and
@@ -75,7 +76,7 @@ Agreed 2026-07-29. Each slice ends somewhere clickable, and the numbers are
    and 50, 51, 65 came along with cancelling and the derived state)
 4. ~~Participant: browse, filter, week grouping, empty states~~ — done (15–17,
    19, 20). Criterion 18 needs a session to be *full*, so it moved to slice 5.
-5. Sign-up, capacity, the last-seat race, cancellation (18, 21–25)
+5. ~~Sign-up, capacity, the last-seat race, cancellation~~ — done (18, 21–25)
 6. Review screen and the assumed-held default (43–54)
 7. Counts, P3, A2, the four CSVs, the export sign-off (55–65)
 8. Email bodies, the `.ics` builder, the two mail ports against fakes (26, 28–33)
@@ -145,6 +146,7 @@ supervision/    the single app
   formatting.py   §10 — date and time formats (and the weekday names §14 lacks)
   models.py       §4 — the data model
   sessions.py     §6.1, §6.3, §6.5 — the weekly cap, create / update / cancel
+  registrations.py §6.2, §6.3 — sign-up, the atomic last seat, giving up a place
   signin.py       §5 — magic-link issue and redemption
   mail.py         §8.1 — one sender for every kind of mail
   forms.py        S2, with the validation of §7.4
