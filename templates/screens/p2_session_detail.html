@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% load copy display %}
+
+{# P2 — Session detail (§7.1). The `Anmelden` button, the registered list and
+   `Zum Kalender hinzufügen` arrive with registrations and the .ics builder. #}
+
+{% block title %}{% t "p2.title" %} · {% t "app.name" %}{% endblock %}
+
+{% block content %}
+  <div class="panel">
+    <h1>{% t "p2.title" %}</h1>
+
+    <p class="session__when">{% when session %}</p>
+    <p class="session__facts">{% duration session %} · {% where session %}</p>
+
+    {% if session.mode == "online" %}
+      {% if may_see_zoom and zoom_url %}
+        <p><strong>{% t "p2.zoom_link" %}:</strong> <a href="{{ zoom_url }}">{{ zoom_url }}</a></p>
+      {% else %}
+        {# D11 — mild protection for a link that never changes. #}
+        <p class="quiet">{% t "p2.zoom_hidden" %}</p>
+      {% endif %}
+    {% endif %}
+
+    <h2>{% t "label.supervisor" %}</h2>
+    <p>
+      {{ session.supervisor.full_name }}
+      {% if session.supervisor.focus_area %}
+        <br><span class="quiet">{% t "label.focus_area" %}: {{ session.supervisor.focus_area }}</span>
+      {% endif %}
+      {% if session.supervisor.profile_url %}
+        <br><a href="{{ session.supervisor.profile_url }}">{% t "p2.profile_link" %}</a>
+      {% endif %}
+    </p>
+
+    {% if registered %}
+      <h2>{% t "p2.registered_list" %}</h2>
+      <ul class="people">
+        {% for person in registered %}<li>{{ person.full_name }}</li>{% endfor %}
+      </ul>
+    {% endif %}
+
+    <p><a class="button" href="{% url 'home' %}">{% t "action.back" %}</a></p>
+  </div>
+{% endblock %}

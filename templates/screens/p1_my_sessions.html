@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% load copy display %}
+
+{# P1 — My sessions (§7.1): upcoming first, then past ones with whether they
+   took place and whether the participant was marked present. Both lists are
+   empty until registrations exist. #}
+
+{% block title %}{% t "p1.tab_mine" %} · {% t "app.name" %}{% endblock %}
+
+{% block content %}
+  {% include "screens/_p1_tabs.html" %}
+
+  {% if not upcoming and not past %}
+    <p class="empty">
+      {% t "empty.no_registrations" %}
+      <a class="button" href="{% url 'participant_home' %}">{% t "empty.browse_link" %}</a>
+    </p>
+  {% else %}
+    {% if upcoming %}
+      <ul class="sessions">
+        {% for session in upcoming %}
+          <li class="session">
+            <a class="session__link" href="{% url 'session_detail' session.pk %}">
+              <div class="session__when">{% when session %}</div>
+              <div class="session__facts">{% duration session %} · {% where session %}</div>
+            </a>
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+
+    {% if past %}
+      <h2>{% t "p1.past_sessions" %}</h2>
+      <ul class="sessions">
+        {% for entry in past %}
+          <li class="session">
+            <div class="session__when">{% when entry.session %}</div>
+            <div class="session__facts">
+              {% if entry.session.is_not_held %}{% t "s1.not_held" %}
+              {% elif entry.attended %}{% t "p1.attended" %}
+              {% else %}{% t "p1.absent" %}{% endif %}
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  {% endif %}
+{% endblock %}

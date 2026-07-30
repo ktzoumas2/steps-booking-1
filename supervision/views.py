@@ -19,7 +19,7 @@ from supervision import mail, sessions as session_service, signin
 from supervision.catalog import LOCALES, t
 from supervision.forms import SessionForm
 from supervision.middleware import LOCALE_COOKIE
-from supervision.models import EmailKind, Role, Session, SessionStatus, Settings
+from supervision.models import EmailKind, Role, Session, SessionStatus, Settings, User
 from supervision.navigation import HOME_BY_ROLE
 
 SIGNIN_BACKEND = "supervision.auth_backends.MagicLinkBackend"
@@ -138,24 +138,106 @@ def _require_role(request, role):
     return request.user.is_authenticated and request.user.role == role
 
 
+# The supervisor filter outlives one page view: §7.1 asks for the choice to
+# persist across sign-ups, and a participant who signs up should come back to
+# the list they were reading, not to everything.
+SUPERVISOR_FILTER = "supervisor_filter"
+
+
 @login_required
 def participant_home(request):
-    """P1 — Sessions (§7.1). Week grouping, the supervisor filter and the
-    sign-up button arrive with the slices that build them."""
+    """P1 — Available (§7.1): every upcoming session, grouped by calendar week."""
     if not _require_role(request, Role.PARTICIPANT):
         return redirect("home")
 
-    upcoming = [
-        session
-        for session in Session.objects.filter(
-            status=SessionStatus.OFFERED
-        ).select_related("supervisor")
-        if session.is_upcoming(request.now)
-    ]
+    upcoming = session_service.upcoming_sessions(request.now)
+    supervisors = session_service.supervisors_with_upcoming(upcoming)
+
+    if "supervisor" in request.GET:
+        chosen = request.GET["supervisor"]
+        request.session[SUPERVISOR_FILTER] = int(chosen) if chosen.isdigit() else None
+    filtered_to_id = request.session.get(SUPERVISOR_FILTER)
+
+    filtered_to = None
+    if filtered_to_id is not None:
+        filtered_to = User.objects.filter(pk=filtered_to_id).first()
+
+    # A filter on a supervisor who has nothing upcoming is deliberately *kept*,
+    # not tidied away: §7.1 requires that exact screen — their name, that they
+    # have nothing, and a way out. Dropping the filter would make the message
+    # unreachable and leave the participant wondering what they are looking at.
+    if filtered_to is not None and filtered_to not in supervisors:
+        # The control still has to reflect its own state, so the current choice
+        # stays in the dropdown even though it is not one to offer afresh.
+        supervisors = supervisors + [filtered_to]
+
+    shown = (
+        [s for s in upcoming if s.supervisor_id == filtered_to.pk]
+        if filtered_to is not None
+        else upcoming
+    )
+
     return render(
         request,
         "screens/p1_sessions.html",
-        {"sessions": upcoming, "zoom_url": Settings.load().zoom_url},
+        {
+            "tab": "available",
+            "weeks": session_service.group_by_week(shown, request.locale),
+            "any_upcoming": bool(upcoming),
+            "supervisors": supervisors,
+            "filtered_to": filtered_to,
+        },
+    )
+
+
+@login_required
+def participant_my_sessions(request):
+    """P1 — My sessions (§7.1). The lists behind it arrive with registrations."""
+    if not _require_role(request, Role.PARTICIPANT):
+        return redirect("home")
+    return render(
+        request,
+        "screens/p1_my_sessions.html",
+        {"tab": "mine", "upcoming": [], "past": []},
+    )
+
+
+@login_required
+def participant_participation(request):
+    """P3 — My participation (§7.1). The count is real; it is simply 0 until
+    somebody has attended something, and §7.1 insists that be shown rather than
+    hidden — a zero with an explanation is trustworthy, a blank screen reads as
+    a bug."""
+    if not _require_role(request, Role.PARTICIPANT):
+        return redirect("home")
+    return render(
+        request,
+        "screens/p3_participation.html",
+        {"tab": "participation", "attended_count": 0, "attended": [], "absent": []},
+    )
+
+
+@login_required
+def session_detail(request, pk):
+    """P2 — Session detail (§7.1)."""
+    session = get_object_or_404(
+        Session.objects.select_related("supervisor"), pk=pk
+    )
+    # D11 — the Zoom link is for registered participants, mild protection for a
+    # link that never changes. The supervisor holding the session and the admin
+    # see it too: they need it, and `p2.zoom_hidden` tells them to sign up for
+    # something they cannot sign up for.
+    may_see_zoom = request.user.is_admin or session.supervisor_id == request.user.pk
+
+    return render(
+        request,
+        "screens/p2_session_detail.html",
+        {
+            "session": session,
+            "zoom_url": Settings.load().zoom_url,
+            "may_see_zoom": may_see_zoom,
+            "registered": [],
+        },
     )
 
 

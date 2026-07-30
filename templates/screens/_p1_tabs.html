@@ -1,0 +1,14 @@
+{% load copy %}
+{# P1's three tabs (§7.1). `aria-current` is what tells a screen reader which
+   one you are on; the underline is only the sighted half of that. #}
+<nav class="tabs">
+  <a class="tab {% if tab == 'available' %}tab--current{% endif %}"
+     href="{% url 'participant_home' %}"
+     {% if tab == 'available' %}aria-current="page"{% endif %}>{% t "p1.tab_available" %}</a>
+  <a class="tab {% if tab == 'mine' %}tab--current{% endif %}"
+     href="{% url 'participant_my_sessions' %}"
+     {% if tab == 'mine' %}aria-current="page"{% endif %}>{% t "p1.tab_mine" %}</a>
+  <a class="tab {% if tab == 'participation' %}tab--current{% endif %}"
+     href="{% url 'participant_participation' %}"
+     {% if tab == 'participation' %}aria-current="page"{% endif %}>{% t "p1.tab_participation" %}</a>
+</nav>

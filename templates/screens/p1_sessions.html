@@ -1,31 +1,64 @@
 {% extends "base.html" %}
 {% load copy display %}
 
-{# P1 — Sessions (§7.1), the participant's landing screen.
-   The three tabs, the supervisor filter, the week groupings, the seat counts
-   and the one-tap `Anmelden` arrive with the slices that build them. #}
+{# P1 — Available (§7.1). Seat counts and the one-tap `Anmelden` arrive with
+   registrations. #}
 
 {% block title %}{% t "p1.tab_available" %} · {% t "app.name" %}{% endblock %}
 
 {% block content %}
-  <h1>{% t "p1.tab_available" %}</h1>
+  {% include "screens/_p1_tabs.html" %}
 
-  {% if not sessions %}
-    <p class="empty">{% t "empty.no_sessions" %}</p>
+  {% if supervisors %}
+    {# §7.1, D15 — one filter, supervisor only. Each further control competes
+       with a screen whose job is one tap to sign up. #}
+    <form method="get" class="filter">
+      <label for="supervisor">{% t "p1.filter_label" %}</label>
+      <select name="supervisor" id="supervisor" onchange="this.form.submit()">
+        <option value="">{% t "p1.filter_all" %}</option>
+        {% for supervisor in supervisors %}
+          <option value="{{ supervisor.pk }}"
+                  {% if filtered_to.pk == supervisor.pk %}selected{% endif %}>
+            {{ supervisor.full_name }}
+          </option>
+        {% endfor %}
+      </select>
+    </form>
+  {% endif %}
+
+  {% if filtered_to %}
+    {# Stated plainly, so nobody mistakes a filter for an empty programme. #}
+    <p class="filter__active">
+      {% t "p1.filter_active" name=filtered_to.full_name %}
+      <a href="?supervisor=">{% t "p1.filter_clear" %}</a>
+    </p>
+  {% endif %}
+
+  {% if weeks %}
+    {% for week in weeks %}
+      <h2 class="week">{{ week.heading }}</h2>
+      <ul class="sessions">
+        {% for session in week.sessions %}
+          <li class="session">
+            <a class="session__link" href="{% url 'session_detail' session.pk %}">
+              <div class="session__when">{% when session %}</div>
+              <div class="session__facts">{% duration session %} · {% where session %}</div>
+              <div class="session__supervisor">{{ session.supervisor.full_name }}{% if session.supervisor.focus_area %}<span class="quiet"> · {{ session.supervisor.focus_area }}</span>{% endif %}</div>
+            </a>
+          </li>
+        {% endfor %}
+      </ul>
+    {% endfor %}
+
+  {% elif any_upcoming %}
+    {# D28 — sessions exist, none match. Never the no-sessions-at-all message:
+       that would be a lie the user can act on wrongly. #}
+    <p class="empty">
+      {% t "empty.no_sessions_for_filter" name=filtered_to.full_name %}
+      <a class="button" href="?supervisor=">{% t "p1.filter_clear" %}</a>
+    </p>
+
   {% else %}
-    <ul class="sessions">
-      {% for session in sessions %}
-        <li class="session">
-          <div class="session__when">{% when session %}</div>
-          <div class="session__facts">{% duration session %} · {% where session %}</div>
-          <div class="session__supervisor">
-            {{ session.supervisor.full_name }}
-            {% if session.supervisor.focus_area %}
-              <span class="quiet">· {{ session.supervisor.focus_area }}</span>
-            {% endif %}
-          </div>
-        </li>
-      {% endfor %}
-    </ul>
+    <p class="empty">{% t "empty.no_sessions" %}</p>
   {% endif %}
 {% endblock %}

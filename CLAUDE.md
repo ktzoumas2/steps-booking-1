@@ -20,16 +20,19 @@ something, say so and get it decided — don't resolve it silently in code.
 
 ## Status
 
-**Runs locally: sign in, offer sessions, see them.** Django 5.2.16 on Python
+**Runs locally: sign in, offer sessions, browse them.** Django 5.2.16 on Python
 3.13.13, installed with `uv`. Models: `User`, `LoginToken`, `EmailLog`,
-`Settings`, `Session` (§4.1–4.6). Screens: sign-in, S1, S2 (offer/edit/cancel),
-and read-only P1 and A1 lists. Plus the injected clock (§11), the §14 catalog
+`Settings`, `Session` (§4.1–4.6). Screens: sign-in, P1 (all three tabs), P2, P3,
+S1, S2 (offer/edit/cancel), A1. Plus the injected clock (§11), the §14 catalog
 with a test that keeps it and the spec identical, `create_admin` (§5.1), the
-weekly cap with its block/warn/override paths (§6.1), and four of the eight
-mails in §8.1. Acceptance criteria 1–6, 8–14, 50–51, 65, 67, 68 pass.
+weekly cap with its block/warn/override paths (§6.1), week grouping and the
+supervisor filter (§7.1), and four of the eight mails in §8.1.
+Acceptance criteria 1–6, 8–17, 19, 20, 50, 51, 65, 67, 68 pass.
 
 Not built yet: `Registration`, and every screen and rule that needs it — sign-up,
-seats, the review screen, the counts and the exports.
+seats, the review screen, the counts and the exports. P1's My sessions and P3
+are built but permanently empty until then, which is why criterion 18 (a full
+session, greyed, reading `Ausgebucht`) waits for slice 5.
 
 **Known gaps, deliberate and recorded rather than forgotten:**
 
@@ -39,6 +42,14 @@ seats, the review screen, the counts and the exports.
   user-facing copy outside the catalog — and belong in a §14.11.
 - **The weekly cap is checked on save only.** §7.2 also wants it inline as soon
   as the date is picked, which needs a little client-side scripting.
+- **The supervisor dropdown auto-submits** via a single inline `onchange`, the
+  only JavaScript in the app. Without it a `<select>` needs a submit button, and
+  §14 has no label for one — the alternative would be inventing copy. Filtering
+  therefore does not work with JavaScript off.
+- **A filter naming a supervisor with nothing upcoming is kept, not cleared.**
+  §7.1 requires that screen (their name, and a way out); tidying the filter away
+  would make criterion 19's second message unreachable. The current choice stays
+  in the dropdown so the control still reflects its own state.
 - **Capacity cannot yet be validated against registrations** (§6.5, criterion
   25) — there are no registrations. It goes in with them.
 - **`session_created` carries no link to the session**: P2 does not exist, and
@@ -62,8 +73,9 @@ Agreed 2026-07-29. Each slice ends somewhere clickable, and the numbers are
    slice 9.
 3. ~~Supervisor: offer / edit / cancel a session, weekly cap~~ — done (8–14,
    and 50, 51, 65 came along with cancelling and the derived state)
-4. Participant: browse, filter, week grouping, empty states (15–20)
-5. Sign-up, capacity, the last-seat race, cancellation (21–25)
+4. ~~Participant: browse, filter, week grouping, empty states~~ — done (15–17,
+   19, 20). Criterion 18 needs a session to be *full*, so it moved to slice 5.
+5. Sign-up, capacity, the last-seat race, cancellation (18, 21–25)
 6. Review screen and the assumed-held default (43–54)
 7. Counts, P3, A2, the four CSVs, the export sign-off (55–65)
 8. Email bodies, the `.ics` builder, the two mail ports against fakes (26, 28–33)

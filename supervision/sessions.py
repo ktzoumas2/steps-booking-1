@@ -89,6 +89,71 @@ def describe_sessions(sessions, locale: str) -> str:
     )
 
 
+# --- Browsing (§7.1 P1) ---------------------------------------------------
+
+
+def upcoming_sessions(now: dt.datetime):
+    """Every offered session still to come, in date order.
+
+    Filtered in Python rather than SQL because "upcoming" is a fact about the
+    wall-clock date and time read against a supplied instant (§11), not a column
+    that can be compared. At a few hundred sessions a year this is free, and
+    §11 asks for clarity rather than throughput.
+    """
+    return [
+        session
+        for session in Session.objects.filter(
+            status=SessionStatus.OFFERED
+        ).select_related("supervisor")
+        if session.is_upcoming(now)
+    ]
+
+
+def supervisors_with_upcoming(sessions) -> list:
+    """§7.1, criterion 17 — only supervisors who have something on offer.
+
+    A dropdown listing everyone would offer choices that lead to an empty
+    screen, which is exactly the confusion D28 is about.
+    """
+    seen = {}
+    for session in sessions:
+        seen.setdefault(session.supervisor_id, session.supervisor)
+    return sorted(seen.values(), key=lambda user: (user.last_name, user.first_name))
+
+
+def group_by_week(sessions, locale: str) -> list[dict]:
+    """§7.1 — grouped under a week heading, empty weeks skipped.
+
+    The answer to "what is on offer over the next weeks" is then the shape of
+    the screen itself, rather than something the user assembles by scrolling.
+    """
+    from supervision.catalog import t
+    from supervision.formatting import format_day_and_month
+
+    weeks: dict[tuple[int, int], list[Session]] = {}
+    for session in sorted(sessions, key=lambda s: (s.date, s.start_time)):
+        weeks.setdefault(iso_week(session.date), []).append(session)
+
+    grouped = []
+    for (iso_year, week_number), week_sessions in sorted(weeks.items()):
+        monday, sunday = week_bounds(iso_year, week_number)
+        grouped.append(
+            {
+                "heading": t(
+                    "p1.week_heading",
+                    locale,
+                    week=week_number,
+                    **{
+                        "from": format_day_and_month(monday, locale),
+                        "to": format_day_and_month(sunday, locale),
+                    },
+                ),
+                "sessions": week_sessions,
+            }
+        )
+    return grouped
+
+
 # --- Creating, changing and cancelling ------------------------------------
 
 

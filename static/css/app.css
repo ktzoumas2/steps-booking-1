@@ -306,6 +306,120 @@ h2 {
   margin-top: 2rem;
 }
 
+/* Tabs, filter and week headings (§7.1) ----------------------------------- */
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-bottom: 1.25rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.tab {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  color: var(--ink-quiet);
+  text-decoration: none;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -1px;
+}
+
+.tab--current {
+  color: var(--ink);
+  font-weight: 600;
+  border-bottom-color: var(--accent);
+}
+
+.filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.filter label {
+  font-weight: 600;
+}
+
+.filter select {
+  min-height: 44px;
+  padding: 0.4rem 0.6rem;
+  font: inherit;
+  color: inherit;
+  background: var(--paper);
+  border: 1px solid var(--ink-quiet);
+  border-radius: var(--radius);
+}
+
+.filter__active {
+  color: var(--ink-quiet);
+  margin: 0 0 1rem;
+}
+
+.week {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 1.75rem 0 0.5rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.session__link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+.session__link:hover .session__when {
+  text-decoration: underline;
+}
+
+.sessions--quiet .session {
+  background: transparent;
+  border-style: dashed;
+}
+
+.headline {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.headline__number {
+  font-size: 3rem;
+  font-weight: 700;
+  line-height: 1;
+  margin: 0;
+}
+
+.headline__label {
+  margin: 0.35rem 0 0;
+  font-weight: 600;
+}
+
+.headline__range {
+  margin: 0.25rem 0 0;
+  font-size: 0.95rem;
+}
+
+.people {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.empty .button {
+  display: inline-flex;
+  margin-top: 0.75rem;
+}
+
 /* Notices ----------------------------------------------------------------- */
 
 .notice {
