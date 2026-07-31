@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% load copy display %}
+
+{# §6.4 — the app warns before saving, since this removes the session from the
+   supervisor's billing count and from every participant's record. Participants
+   are not notified (D12): they were there, or they weren't. #}
+
+{% block title %}{% t "s3.not_held_action" %} · {% t "app.name" %}{% endblock %}
+
+{% block content %}
+  <div class="panel panel--narrow">
+    <h1>{% t "s3.not_held_action" %}</h1>
+
+    <p class="session__when">{% when session %}</p>
+    <p class="session__facts">{% duration session %} · {% where session %}</p>
+
+    <p class="notice notice--warning" role="alert">{% t "s3.not_held_warning" %}</p>
+
+    <form method="post" action="{% url 'session_review' session.pk %}">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="not_held">
+      <div class="form__actions">
+        <button type="submit" class="button button--primary">{% t "s3.not_held_action" %}</button>
+        <a class="button" href="{% url 'session_review' session.pk %}">{% t "action.back" %}</a>
+      </div>
+    </form>
+  </div>
+{% endblock %}

@@ -53,6 +53,11 @@
                 · <span class="quiet">{% t "p3.not_reviewed" %}</span>
               {% endif %}
             </div>
+            {% if not session.is_cancelled %}
+            <div class="session__actions">
+              <a class="button" href="{% url 'session_review' session.pk %}">{% t "s1.review" %}</a>
+            </div>
+            {% endif %}
           </li>
         {% endfor %}
       </ul>

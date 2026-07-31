@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% load copy display %}
+
+{# S3 — Review a session (§7.2, §6.4).
+
+   The screen opens on the assumption that everything went as planned: the
+   session took place and everyone registered is ticked. `Alles wie geplant`
+   saves without changing a value, which is a real action because it sets
+   confirmed_at. #}
+
+{% block title %}{% t "s3.title" %} · {% t "app.name" %}{% endblock %}
+
+{% block content %}
+  <h1>{% t "s3.title" %}</h1>
+
+  <p class="session__when">{% when session %}</p>
+  <p class="session__facts">{% duration session %} · {% where session %}</p>
+
+  {% if session.is_reviewed %}
+    <p class="quiet">
+      {% timestamp session.confirmed_at as reviewed_when %}
+      {% t "s3.last_reviewed" name=session.confirmed_by.full_name when=reviewed_when %}
+    </p>
+  {% endif %}
+
+  {% if session.is_not_held %}
+    <p class="notice notice--warning" role="alert">{% t "s1.not_held" %}</p>
+  {% endif %}
+
+  <div class="panel">
+    <h2 class="question">{% t "s3.question" %}</h2>
+
+    {# The common case, in one tap, without scrolling past anything. #}
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="as_planned">
+      <button type="submit" class="button button--primary">{% t "s3.all_as_planned" %}</button>
+    </form>
+  </div>
+
+  <form method="post" class="panel">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="save">
+
+    <h2>{% t "s3.attendance" %}</h2>
+    {% if registrations %}
+      <ul class="attendance">
+        {% for registration in registrations %}
+          <li>
+            <label class="check">
+              <input type="checkbox" name="present" value="{{ registration.pk }}"
+                     {% if registration.attended is not False %}checked{% endif %}>
+              <span>{{ registration.user.full_name }}</span>
+            </label>
+            {% if registration.source == "added_at_confirmation" %}
+              <label class="check check--quiet">
+                <input type="checkbox" name="remove" value="{{ registration.pk }}">
+                <span>{% t "action.cancel" %}</span>
+              </label>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+
+    {% if candidates %}
+      {# §6.4 — attendance genuinely differs from sign-ups, and reconciling the
+         two by hand is one of the things this app exists to stop. #}
+      <div class="field">
+        <label for="add">{% t "s3.add_attendee" %}</label>
+        <select name="add" id="add" multiple size="4">
+          {% for candidate in candidates %}
+            <option value="{{ candidate.pk }}">{{ candidate.full_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    {% endif %}
+
+    <div class="form__actions">
+      <button type="submit" class="button">{% t "action.save" %}</button>
+    </div>
+  </form>
+
+  {# Less prominent, and warned about on its own screen (§7.2). #}
+  <p class="danger-zone">
+    <a class="button" href="{% url 'session_not_held' session.pk %}">{% t "s3.not_held_action" %}</a>
+  </p>
+{% endblock %}

@@ -22,6 +22,12 @@ urlpatterns = [
     path("sessions/<int:pk>/", views.session_detail, name="session_detail"),
     path("sessions/<int:pk>/edit/", views.session_edit, name="session_edit"),
     path("sessions/<int:pk>/cancel/", views.session_cancel, name="session_cancel"),
+    path("sessions/<int:pk>/review/", views.session_review, name="session_review"),
+    path(
+        "sessions/<int:pk>/did-not-take-place/",
+        views.session_not_held,
+        name="session_not_held",
+    ),
     path("sessions/<int:pk>/sign-up/", views.session_sign_up, name="session_sign_up"),
     path(
         "sessions/<int:pk>/give-up-place/",

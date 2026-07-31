@@ -20,6 +20,7 @@ from django.views.decorators.http import require_POST
 from supervision import (
     mail,
     registrations as registration_service,
+    review as review_service,
     sessions as session_service,
     signin,
 )
@@ -286,6 +287,81 @@ def session_detail(request, pk):
             "still_to_come": session.is_upcoming(request.now),
         },
     )
+
+
+# --- S3 — reviewing a past session (§6.4, §7.2) ---------------------------
+
+
+@login_required
+def session_review(request, pk):
+    """S3 — opens on the assumption that everything went as planned.
+
+    The question at the top is "War etwas anders?", not "Did this happen?": the
+    session already counts, and the screen exists to record the exceptions.
+    """
+    session = get_object_or_404(
+        Session.objects.select_related("supervisor", "confirmed_by"), pk=pk
+    )
+    if not review_service.may_review(request.user, session):
+        return redirect("home")
+    if not review_service.is_reviewable(session, request.now):
+        return redirect("home")
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+
+        if action == "not_held":
+            # §6.4 — warned about on its own screen first, because it removes
+            # the session from the supervisor's count and from every
+            # participant's record.
+            review_service.save_review(
+                session, by=request.user, now=request.now, took_place=False
+            )
+        elif action == "as_planned":
+            # A real action: it changes no value but sets confirmed_at, which is
+            # exactly the statement the billing sign-off needs (§7.3 A2).
+            review_service.save_review(session, by=request.user, now=request.now)
+        else:
+            review_service.save_review(
+                session,
+                by=request.user,
+                now=request.now,
+                took_place=True,
+                present_registration_ids={
+                    int(value) for value in request.POST.getlist("present")
+                },
+                add_participant_ids=[
+                    int(value) for value in request.POST.getlist("add") if value
+                ],
+                remove_registration_ids=[
+                    int(value) for value in request.POST.getlist("remove")
+                ],
+            )
+        return redirect(HOME_BY_ROLE[request.user.role])
+
+    return render(
+        request,
+        "screens/s3_review.html",
+        {
+            "session": session,
+            "registrations": list(
+                session.active_registrations().select_related("user")
+            ),
+            "candidates": review_service.candidates_to_add(session),
+        },
+    )
+
+
+@login_required
+def session_not_held(request, pk):
+    """The warning §6.4 requires before recording that a session did not happen."""
+    session = get_object_or_404(Session, pk=pk)
+    if not review_service.may_review(
+        request.user, session
+    ) or not review_service.is_reviewable(session, request.now):
+        return redirect("home")
+
+    return render(request, "screens/s3_not_held.html", {"session": session})
 
 
 # --- Signing up and giving up a place (§6.2, §6.3) ------------------------

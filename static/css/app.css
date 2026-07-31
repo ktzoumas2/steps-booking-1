@@ -448,6 +448,56 @@ h2 {
   margin-top: 0.75rem;
 }
 
+/* Review (§7.2 S3) -------------------------------------------------------- */
+
+.question {
+  margin-top: 0;
+  font-size: 1.15rem;
+  color: var(--ink);
+}
+
+.attendance {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+}
+
+.attendance li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  cursor: pointer;
+}
+
+.check input {
+  width: 20px;
+  height: 20px;
+}
+
+.check--quiet {
+  color: var(--ink-quiet);
+  font-size: 0.95rem;
+}
+
+.field select[multiple] {
+  height: auto;
+  padding: 0.4rem;
+}
+
+.panel + .panel {
+  margin-top: 1rem;
+}
+
 /* Notices ----------------------------------------------------------------- */
 
 .notice {
