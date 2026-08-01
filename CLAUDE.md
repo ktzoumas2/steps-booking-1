@@ -21,18 +21,19 @@ something, say so and get it decided — don't resolve it silently in code.
 ## Status
 
 **Everything the spreadsheet did, plus invites and reminders.** Django 5.2.16
-on Python 3.13.13, installed with `uv`. All of §4's models exist. Ten of the
-twelve screens: sign-in, P1 (all three tabs), P2, P3, S1, S2, S3, S5, A1, A2.
+on Python 3.13.13, installed with `uv`. All of §4's models exist. **All twelve
+screens** (P1–P3, S1–S5, A1–A4), plus sign-in.
 Plus the injected clock (§11), the §14 catalog with a test that keeps it and the
 spec identical, `create_admin` (§5.1), the weekly cap (§6.1), week grouping and
 the supervisor filter (§7.1), the atomic last seat (§6.2), the assumed-held
 default and its corrections (§6.4), the two counts of §9.1, the four CSV exports
 with their BOM (§9.2), the billing sign-off (§7.3), all eight mails of §8.1
-except `invitation`, the `.ics` builder (§8.2) and the reminder scheduling port
-(§8.3). Acceptance criteria 1–6, 8–33, 43–65, 67–69 pass.
+the `.ics` builder (§8.2) and the reminder scheduling port
+(§8.3), and all eight mails of §8.1.
+**Acceptance criteria 1–33, 43–69 pass — everything except the ten that need a
+real email provider or a real calendar client (27, 34, 35–42).**
 
-Missing screens: **A3 (People) and A4 (Settings)** — so accounts and settings
-are still only reachable from `manage.py shell`.
+Left to build: the §12.2 seed fixture.
 
 **Known gaps, deliberate and recorded rather than forgotten:**
 
@@ -94,7 +95,7 @@ Agreed 2026-07-29. Each slice ends somewhere clickable, and the numbers are
    done (55–59, 61–64)
 8. ~~Email bodies, the `.ics` builder, the scheduling port~~ — done (26,
    28–33, 69, and the structure behind 35–42)
-9. Admin people and settings, the deactivation rules (66)
+9. ~~Admin people and settings, the deactivation rules~~ — done (7, 66)
 10. The §12.2 seed fixture — the data the demo is shown with
 
 Two things sit deliberately outside the numbering, both agreed 2026-07-29:
@@ -162,6 +163,7 @@ supervision/    the single app
   sessions.py     §6.1, §6.3, §6.5 — the weekly cap, create / update / cancel
   registrations.py §6.2, §6.3 — sign-up, the atomic last seat, giving up a place
   review.py       §6.4 — recording what happened, and correcting it
+  people.py       §4.1, §7.3 A3 — adding people, and the deactivation rules
   counting.py     §9.1 — the two counts, both written `is not False`
   exports.py      §9.2 — the four CSVs, UTF-8 **with BOM** for Excel
   calendar.py     §8.2 — the .ics: stable UID, rising SEQUENCE, one attendee

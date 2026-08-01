@@ -13,7 +13,7 @@ from django import forms
 
 from supervision.catalog import t
 from supervision.clock import today_in_berlin
-from supervision.models import Mode, Role, Session, Settings, User
+from supervision.models import Mode, Role, Session, Settings, User  # noqa: F401
 
 
 class SessionForm(forms.ModelForm):
@@ -93,3 +93,43 @@ class SessionForm(forms.ModelForm):
             cleaned["room"] = ""
 
         return cleaned
+
+
+class PersonForm(forms.ModelForm):
+    """A3 — add a person (§7.3). Role, name, email; nothing else is settable here."""
+
+    class Meta:
+        model = User
+        fields = ["first_name", "last_name", "email", "role"]
+
+    def __init__(self, *args, locale: str = "de", **kwargs):
+        super().__init__(*args, **kwargs)
+        self.locale = locale
+
+    def clean_email(self):
+        email = self.cleaned_data["email"].strip()
+        # §4.1 — one login identity, compared case-insensitively. The database
+        # enforces it too; this is so the admin gets a sentence, not a 500.
+        existing = User.objects.filter(email__iexact=email)
+        if self.instance.pk:
+            existing = existing.exclude(pk=self.instance.pk)
+        if existing.exists():
+            raise forms.ValidationError(
+                t("a3.email", self.locale) + ": " + email
+            )
+        return email
+
+
+class SettingsForm(forms.ModelForm):
+    """A4 — the programme-wide settings of §4.4."""
+
+    class Meta:
+        model = Settings
+        fields = [
+            "zoom_url",
+            "default_duration_minutes",
+            "default_capacity",
+            "weekly_session_cap",
+            "enforce_weekly_cap",
+            "reminder_lead_hours",
+        ]

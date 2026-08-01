@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% load copy %}
+
+{# A4 — Settings (§7.3, §4.4). The Zoom link lives here once and is read at
+   display and send time, so changing it fixes every future session at once. #}
+
+{% block title %}{% t "a4.title" %} · {% t "app.name" %}{% endblock %}
+
+{% block content %}
+  <h1>{% t "a4.title" %}</h1>
+
+  <div class="panel">
+    <form method="post" class="form">
+      {% csrf_token %}
+      {% for field in form %}
+        <div class="field {% if field.errors %}field--invalid{% endif %}">
+          {% if field.name == "enforce_weekly_cap" %}
+            <label class="check">
+              {{ field }}
+              <span>{% t "a4.enforce_cap" %}</span>
+            </label>
+          {% else %}
+            <label for="{{ field.id_for_label }}">
+              {% if field.name == "zoom_url" %}{% t "a4.zoom_url" %}
+              {% elif field.name == "default_duration_minutes" %}{% t "a4.default_duration" %}
+              {% elif field.name == "default_capacity" %}{% t "a4.default_capacity" %}
+              {% elif field.name == "weekly_session_cap" %}{% t "a4.weekly_cap" %}
+              {% elif field.name == "reminder_lead_hours" %}{% t "a4.reminder_lead" %}
+              {% endif %}
+            </label>
+            {{ field }}
+          {% endif %}
+          {% for error in field.errors %}<p class="field__error" role="alert">{{ error }}</p>{% endfor %}
+        </div>
+      {% endfor %}
+      <div class="form__actions">
+        <button type="submit" class="button button--primary">{% t "action.save" %}</button>
+      </div>
+    </form>
+  </div>
+{% endblock %}

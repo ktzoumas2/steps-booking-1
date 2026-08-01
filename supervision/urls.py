@@ -20,6 +20,13 @@ urlpatterns = [
     path("all-sessions/", views.admin_home, name="admin_home"),
     path("my-counts/", views.supervisor_counts, name="supervisor_counts"),
     path("counts/", views.admin_counts, name="admin_counts"),
+    path("people/", views.admin_people, name="admin_people"),
+    path(
+        "people/<int:pk>/state/",
+        views.admin_person_state,
+        name="admin_person_state",
+    ),
+    path("settings/", views.admin_settings, name="admin_settings"),
     path(
         "counts/participant/<int:pk>/",
         views.admin_participant_record,

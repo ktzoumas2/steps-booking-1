@@ -18,6 +18,8 @@ NAV = {
     Role.ADMIN: [
         ("nav.all_sessions", "admin_home"),
         ("nav.counts_export", "admin_counts"),
+        ("nav.people", "admin_people"),
+        ("nav.settings", "admin_settings"),
     ],
 }
 

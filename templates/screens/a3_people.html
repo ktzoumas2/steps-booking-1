@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% load copy %}
+
+{# A3 — People (§7.3). Every account originates here, with the single exception
+   of the install-time admin (§5.1). Deactivate, never delete: deleting would
+   orphan the sessions and attendance records billing depends on (§4.1). #}
+
+{% block title %}{% t "a3.title" %} · {% t "app.name" %}{% endblock %}
+
+{% block content %}
+  <h1>{% t "a3.title" %}</h1>
+
+  <div class="panel">
+    <h2>{% t "a3.add_person" %}</h2>
+    <form method="post" class="form">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="add">
+
+      <div class="field {% if form.first_name.errors %}field--invalid{% endif %}">
+        <label for="{{ form.first_name.id_for_label }}">{% t "a3.first_name" %}</label>
+        {{ form.first_name }}
+      </div>
+      <div class="field {% if form.last_name.errors %}field--invalid{% endif %}">
+        <label for="{{ form.last_name.id_for_label }}">{% t "a3.last_name" %}</label>
+        {{ form.last_name }}
+      </div>
+      <div class="field {% if form.email.errors %}field--invalid{% endif %}">
+        <label for="{{ form.email.id_for_label }}">{% t "a3.email" %}</label>
+        {{ form.email }}
+        {% for error in form.email.errors %}<p class="field__error" role="alert">{{ error }}</p>{% endfor %}
+      </div>
+      <div class="field">
+        <label for="{{ form.role.id_for_label }}">{% t "a3.role" %}</label>
+        {{ form.role }}
+      </div>
+
+      {# D10 — off by default. Routine additions need no ceremony, but without
+         the option the app cannot reach its own users on launch day. #}
+      <label class="check">
+        <input type="checkbox" name="send_invitation" value="1">
+        <span>{% t "a3.send_invitation" %}</span>
+      </label>
+
+      <div class="form__actions">
+        <button type="submit" class="button button--primary">{% t "action.save" %}</button>
+      </div>
+    </form>
+  </div>
+
+  <table class="table">
+    <thead>
+      <tr>
+        <th>{% t "a3.last_name" %}</th>
+        <th>{% t "a3.email" %}</th>
+        <th>{% t "a3.role" %}</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for person in people %}
+        <tr {% if not person.is_active %}class="quiet"{% endif %}>
+          <td>{{ person.full_name }}{% if not person.is_active %} · {% t "a3.inactive" %}{% endif %}</td>
+          <td>{{ person.email }}</td>
+          <td>
+            {% if person.role == "participant" %}{% t "a3.role_participant" %}
+            {% elif person.role == "supervisor" %}{% t "a3.role_supervisor" %}
+            {% else %}{% t "a3.role_admin" %}{% endif %}
+          </td>
+          <td>
+            <form method="post" action="{% url 'admin_person_state' person.pk %}">
+              {% csrf_token %}
+              {% if person.is_active %}
+                <input type="hidden" name="action" value="deactivate">
+                <button type="submit" class="button">{% t "a3.deactivate" %}</button>
+              {% else %}
+                <input type="hidden" name="action" value="reactivate">
+                <button type="submit" class="button">{% t "a3.reactivate" %}</button>
+              {% endif %}
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}

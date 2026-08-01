@@ -21,6 +21,7 @@ from django.views.decorators.http import require_POST
 
 from supervision import (
     calendar as ics,
+    people,
     counting,
     exports,
     mail,
@@ -30,7 +31,7 @@ from supervision import (
     signin,
 )
 from supervision.catalog import LOCALES, t
-from supervision.forms import SessionForm
+from supervision.forms import PersonForm, SessionForm, SettingsForm
 from supervision.middleware import LOCALE_COOKIE
 from supervision.models import EmailKind, Role, Session, SessionStatus, Settings, User
 from supervision.navigation import HOME_BY_ROLE
@@ -481,6 +482,86 @@ def session_not_held(request, pk):
         return redirect("home")
 
     return render(request, "screens/s3_not_held.html", {"session": session})
+
+
+# --- A3 and A4 — people and settings (§7.3) -------------------------------
+
+
+@login_required
+def admin_people(request):
+    """A3 — every account originates here, bar the install-time admin (§5.1)."""
+    if not _require_role(request, Role.ADMIN):
+        return redirect("home")
+
+    form = PersonForm(locale=request.locale)
+    if request.method == "POST" and request.POST.get("action") == "add":
+        form = PersonForm(request.POST, locale=request.locale)
+        if form.is_valid():
+            people.add_person(
+                now=request.now,
+                send_invitation=request.POST.get("send_invitation") == "1",
+                link=request.build_absolute_uri(reverse("signin")),
+                **form.cleaned_data,
+            )
+            return redirect("admin_people")
+
+    return render(
+        request,
+        "screens/a3_people.html",
+        {
+            "form": form,
+            "people": people.everyone(),
+            "role_labels": dict(people.role_choices()),
+        },
+    )
+
+
+@login_required
+def admin_person_state(request, pk):
+    """Deactivate or reactivate (§4.1). Never delete: that would orphan the
+    sessions and attendance records billing depends on."""
+    if not _require_role(request, Role.ADMIN):
+        return redirect("home")
+
+    person = get_object_or_404(User, pk=pk)
+    if request.method == "POST":
+        if request.POST.get("action") == "reactivate":
+            people.reactivate(person)
+        else:
+            try:
+                people.deactivate(person, now=request.now)
+            except people.DeactivationBlocked as blocked:
+                # §7.4 — the message names the sessions, each linked, so the
+                # admin can cancel or reassign them and come back.
+                messages.error(
+                    request,
+                    t(
+                        blocked.copy_key,
+                        request.locale,
+                        name=person.full_name,
+                        sessions=people.describe_blocking_sessions(
+                            blocked.sessions, request.locale
+                        ),
+                    ),
+                )
+    return redirect("admin_people")
+
+
+@login_required
+def admin_settings(request):
+    """A4 — the programme-wide settings of §4.4."""
+    if not _require_role(request, Role.ADMIN):
+        return redirect("home")
+
+    settings_row = Settings.load()
+    form = SettingsForm(instance=settings_row)
+    if request.method == "POST":
+        form = SettingsForm(request.POST, instance=settings_row)
+        if form.is_valid():
+            form.save()
+            return redirect("admin_settings")
+
+    return render(request, "screens/a4_settings.html", {"form": form})
 
 
 @login_required
