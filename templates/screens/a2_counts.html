@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% load copy display %}
+
+{# A2 — Counts and export (§7.3). #}
+
+{% block title %}{% t "a2.title" %} · {% t "app.name" %}{% endblock %}
+
+{% block content %}
+  <h1>{% t "a2.title" %}</h1>
+
+  {% include "screens/_date_range.html" %}
+
+  <form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="start" value="{{ start|date:'Y-m-d' }}">
+    <input type="hidden" name="end" value="{{ end|date:'Y-m-d' }}">
+
+    {% if needs_acknowledgement %}
+      {# D30–D31 — above the figures, not hidden behind them. It acknowledges
+         rather than blocks: being shown exactly which sessions nobody has
+         checked is what makes the choice an informed one. #}
+      <div class="notice notice--warning" role="alert">
+        <p>{% t "warn.unreviewed_in_range" count=unreviewed|length %}</p>
+        <ul class="clashing">
+          {% for session in unreviewed %}
+            <li>
+              <a href="{% url 'session_review' session.pk %}">{% when session %}</a>
+              · {{ session.supervisor.full_name }}
+            </li>
+          {% endfor %}
+        </ul>
+        <label class="check">
+          <input type="checkbox" name="ack" value="1">
+          <span>{% t "a2.signoff_ack" %}</span>
+        </label>
+      </div>
+    {% endif %}
+
+    <h2>{% t "a2.per_supervisor" %}</h2>
+    {% if per_supervisor %}
+      <table class="table">
+        <thead>
+          <tr>
+            <th>{% t "label.supervisor" %}</th>
+            <th>{% t "a2.sessions_held" %}</th>
+            {# Informational only — billing counts sessions, never minutes. #}
+            <th>{% t "a2.total_minutes" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in per_supervisor %}
+            <tr>
+              <td>{{ row.supervisor.full_name }}</td>
+              <td>{{ row.sessions_held }}</td>
+              <td class="quiet">{{ row.total_minutes }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="empty">{% t "empty.no_matches" %}</p>
+    {% endif %}
+
+    <div class="form__actions">
+      <button type="submit" name="export" value="per_supervisor" class="button">
+        {% t "a2.export_csv" %}
+      </button>
+    </div>
+
+    <h2>{% t "a2.per_participant" %}</h2>
+    {% if per_participant %}
+      <table class="table">
+        <thead>
+          <tr>
+            <th>{% t "a3.role_participant" %}</th>
+            <th>{% t "a2.sessions_attended" %}</th>
+            <th>{% t "a2.sessions_registered" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in per_participant %}
+            <tr>
+              <td>
+                <a href="{% url 'admin_participant_record' row.participant.pk %}?start={{ start|date:'Y-m-d' }}&amp;end={{ end|date:'Y-m-d' }}">
+                  {{ row.participant.full_name }}
+                </a>
+              </td>
+              <td>{{ row.sessions_attended }}</td>
+              <td>{{ row.sessions_registered }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="empty">{% t "empty.no_matches" %}</p>
+    {% endif %}
+
+    <div class="form__actions">
+      <button type="submit" name="export" value="per_participant" class="button">
+        {% t "a2.export_csv" %}
+      </button>
+      <button type="submit" name="export" value="participation_detail" class="button">
+        {% t "a2.export_csv" %} · {% t "p3.title" %}
+      </button>
+      <button type="submit" name="export" value="sessions" class="button">
+        {% t "a2.export_csv" %} · {% t "a1.title" %}
+      </button>
+    </div>
+  </form>
+{% endblock %}

@@ -498,6 +498,59 @@ h2 {
   margin-top: 1rem;
 }
 
+/* Counts and export (§7.3 A2) --------------------------------------------- */
+
+.range fieldset {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--paper);
+  margin: 0 0 1.25rem;
+  padding: 0.75rem 1rem 1rem;
+}
+
+.range legend {
+  font-weight: 600;
+  padding: 0 0.35rem;
+}
+
+.range__fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-end;
+}
+
+.range__fields .field {
+  margin-bottom: 0;
+}
+
+/* Wide tables scroll inside themselves rather than making the page scroll
+ * sideways on a phone (§11 — mobile-first). */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.table th,
+.table td {
+  padding: 0.6rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+}
+
+.table th {
+  font-size: 0.9rem;
+  color: var(--ink-quiet);
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
 /* Notices ----------------------------------------------------------------- */
 
 .notice {

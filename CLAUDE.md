@@ -20,18 +20,18 @@ something, say so and get it decided — don't resolve it silently in code.
 
 ## Status
 
-**Offer, sign up, review, count.** Django 5.2.16 on Python 3.13.13, installed
-with `uv`. All of §4's models exist. Screens: sign-in, P1 (all three tabs), P2,
-P3, S1, S2 (offer/edit/cancel), S3 (review), A1. Plus the injected clock (§11),
-the §14 catalog with a test that keeps it and the spec identical, `create_admin`
-(§5.1), the weekly cap (§6.1), week grouping and the supervisor filter (§7.1),
-the atomic last seat (§6.2), the assumed-held default and its corrections
-(§6.4), the two counts of §9.1, and six of the eight mails in §8.1.
-Acceptance criteria 1–6, 8–25, 43–54, 60, 65, 67, 68 pass.
+**Everything the spreadsheet did, and the exports that replace it.** Django
+5.2.16 on Python 3.13.13, installed with `uv`. All of §4's models exist. Ten of
+the twelve screens: sign-in, P1 (all three tabs), P2, P3, S1, S2, S3, S5, A1, A2.
+Plus the injected clock (§11), the §14 catalog with a test that keeps it and the
+spec identical, `create_admin` (§5.1), the weekly cap (§6.1), week grouping and
+the supervisor filter (§7.1), the atomic last seat (§6.2), the assumed-held
+default and its corrections (§6.4), the two counts of §9.1, the four CSV exports
+with their BOM (§9.2), the billing sign-off (§7.3), and six of the eight mails.
+Acceptance criteria 1–6, 8–25, 43–65, 67, 68 pass.
 
-Not built yet: the screens that *show* the counts — S5, A2 and P3's real
-content — and the four CSV exports (§9.2). `supervision/counting.py` already has
-the arithmetic they share, tested against a hand-built fixture.
+Missing screens: **A3 (People) and A4 (Settings)** — so accounts and settings
+are still only reachable from `manage.py shell`.
 
 **Known gaps, deliberate and recorded rather than forgotten:**
 
@@ -49,6 +49,10 @@ the arithmetic they share, tested against a hand-built fixture.
   §7.1 requires that screen (their name, and a way out); tidying the filter away
   would make criterion 19's second message unreachable. The current choice stays
   in the dropdown so the control still reflects its own state.
+- **§14 has no labels for a date-range picker's two fields.** `Zeitraum`
+  names the group; P3, S5 and A2 each need a *from* and a *to*, and WCAG
+  wants every control labelled. They sit in `formatting.py` with the
+  weekday names, awaiting the same §14.11.
 - **§14.10 has no `email.registration_confirmed.body`.** §8.1 says that mail
   carries "session details + how to cancel", but there is no string for the
   second half, so the mail currently sends the details alone.
@@ -85,8 +89,8 @@ Agreed 2026-07-29. Each slice ends somewhere clickable, and the numbers are
 5. ~~Sign-up, capacity, the last-seat race, cancellation~~ — done (18, 21–25)
 6. ~~Review screen and the assumed-held default~~ — done (43–49, 52–54;
    50 and 51 came with slice 3, and 60 fell out of the counting rules)
-7. Counts *on screen* — S5, A2, P3 — the four CSVs, the export sign-off
-   (55–59, 61–64). The arithmetic is already in `counting.py`.
+7. ~~Counts on screen — S5, A2, P3 — the four CSVs, the export sign-off~~ —
+   done (55–59, 61–64)
 8. Email bodies, the `.ics` builder, the two mail ports against fakes (26, 28–33)
 9. Admin people and settings, the deactivation rules (66)
 10. The §12.2 seed fixture — the data the demo is shown with
@@ -157,6 +161,7 @@ supervision/    the single app
   registrations.py §6.2, §6.3 — sign-up, the atomic last seat, giving up a place
   review.py       §6.4 — recording what happened, and correcting it
   counting.py     §9.1 — the two counts, both written `is not False`
+  exports.py      §9.2 — the four CSVs, UTF-8 **with BOM** for Excel
   signin.py       §5 — magic-link issue and redemption
   mail.py         §8.1 — one sender for every kind of mail
   forms.py        S2, with the validation of §7.4

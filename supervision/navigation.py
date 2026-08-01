@@ -13,9 +13,11 @@ NAV = {
     ],
     Role.SUPERVISOR: [
         ("nav.my_sessions", "supervisor_home"),
+        ("nav.my_counts", "supervisor_counts"),
     ],
     Role.ADMIN: [
         ("nav.all_sessions", "admin_home"),
+        ("nav.counts_export", "admin_counts"),
     ],
 }
 

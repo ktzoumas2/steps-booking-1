@@ -7,17 +7,21 @@ lists behind those empty states arrive with the Session model.
 
 from __future__ import annotations
 
+import datetime as dt
+
 from django.contrib import messages
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Q
-from django.http import HttpResponseRedirect
+from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
 from supervision import (
+    counting,
+    exports,
     mail,
     registrations as registration_service,
     review as review_service,
@@ -239,19 +243,133 @@ def participant_my_sessions(request):
     )
 
 
+def _date_range(source) -> tuple[dt.date | None, dt.date | None]:
+    """Read a `start`/`end` range off a request, ignoring anything unparseable.
+
+    All time, by default (§7.1 P3): the range is a narrowing, and a typo in a
+    date field should show more than the user asked for, never less.
+    """
+
+    def parse(name):
+        raw = (source.get(name) or "").strip()
+        try:
+            return dt.date.fromisoformat(raw)
+        except ValueError:
+            return None
+
+    return parse("start"), parse("end")
+
+
+def _participation_record(now, participant, start, end) -> dict:
+    """P3's content, which A2's drill-down reuses verbatim (§7.3).
+
+    The admin sees exactly what the participant sees, which is the point: one
+    definition of the figure, not two that can disagree.
+    """
+    attended = counting.attended_registrations(
+        now, participant=participant, start=start, end=end
+    )
+    return {
+        "participant": participant,
+        "attended_count": len(attended),
+        "attended": attended,
+        "absent": counting.absent_registrations(
+            now, participant=participant, start=start, end=end
+        ),
+        "start": start,
+        "end": end,
+    }
+
+
 @login_required
 def participant_participation(request):
-    """P3 — My participation (§7.1). The count is real; it is simply 0 until
-    somebody has attended something, and §7.1 insists that be shown rather than
-    hidden — a zero with an explanation is trustworthy, a blank screen reads as
-    a bug."""
+    """P3 — My participation (§7.1), the answer to "how many, and which ones?"."""
     if not _require_role(request, Role.PARTICIPANT):
         return redirect("home")
+
+    start, end = _date_range(request.GET)
+    context = _participation_record(request.now, request.user, start, end)
+    context["tab"] = "participation"
+    return render(request, "screens/p3_participation.html", context)
+
+
+# --- S5 and A2 — the counts (§7.2, §7.3, §9) ------------------------------
+
+
+@login_required
+def supervisor_counts(request):
+    """S5 — My counts (§7.2). A supervisor sees their own and nobody else's (§3)."""
+    if not _require_role(request, Role.SUPERVISOR):
+        return redirect("home")
+
+    start, end = _date_range(request.GET)
+    held = counting.sessions_that_count(
+        request.now, supervisor=request.user, start=start, end=end
+    )
     return render(
         request,
-        "screens/p3_participation.html",
-        {"tab": "participation", "attended_count": 0, "attended": [], "absent": []},
+        "screens/s5_counts.html",
+        {"held": held, "count": len(held), "start": start, "end": end},
     )
+
+
+@login_required
+def admin_counts(request):
+    """A2 — Counts and export (§7.3), including the billing sign-off."""
+    if not _require_role(request, Role.ADMIN):
+        return redirect("home")
+
+    source = request.POST if request.method == "POST" else request.GET
+    start, end = _date_range(source)
+    unreviewed = counting.unreviewed_in_range(request.now, start=start, end=end)
+
+    if request.method == "POST":
+        wanted = request.POST.get("export")
+        acknowledged = request.POST.get("ack") == "1"
+
+        # §7.3, D30–D31 — the one place a human is made to look before the
+        # numbers become an invoice. It acknowledges rather than blocks:
+        # requiring every session to be opened would rebuild the confirmation
+        # chore D29 removed, and an admin facing a blocked export at invoice
+        # time will find a way around it.
+        if wanted in exports.EXPORTS and (acknowledged or not unreviewed):
+            build, filename = exports.EXPORTS[wanted]
+            body = build(request.now, start=start, end=end)
+            response = HttpResponse(body, content_type="text/csv; charset=utf-8")
+            response["Content-Disposition"] = (
+                f'attachment; filename="{filename}.csv"'
+            )
+            return response
+
+    return render(
+        request,
+        "screens/a2_counts.html",
+        {
+            "per_supervisor": counting.sessions_held_by_supervisor(
+                request.now, start=start, end=end
+            ),
+            "per_participant": counting.participation_by_participant(
+                request.now, start=start, end=end
+            ),
+            "unreviewed": unreviewed,
+            "needs_acknowledgement": bool(unreviewed),
+            "start": start,
+            "end": end,
+        },
+    )
+
+
+@login_required
+def admin_participant_record(request, pk):
+    """§7.3 A2 — where the admin answers "has this trainee actually been
+    coming?" without exporting anything."""
+    if not _require_role(request, Role.ADMIN):
+        return redirect("home")
+
+    participant = get_object_or_404(User, pk=pk, role=Role.PARTICIPANT)
+    start, end = _date_range(request.GET)
+    context = _participation_record(request.now, participant, start, end)
+    return render(request, "screens/a2_participant_record.html", context)
 
 
 @login_required

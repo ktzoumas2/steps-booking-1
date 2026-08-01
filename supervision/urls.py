@@ -18,6 +18,13 @@ urlpatterns = [
     ),
     path("my-sessions/", views.supervisor_home, name="supervisor_home"),
     path("all-sessions/", views.admin_home, name="admin_home"),
+    path("my-counts/", views.supervisor_counts, name="supervisor_counts"),
+    path("counts/", views.admin_counts, name="admin_counts"),
+    path(
+        "counts/participant/<int:pk>/",
+        views.admin_participant_record,
+        name="admin_participant_record",
+    ),
     path("sessions/new/", views.session_new, name="session_new"),
     path("sessions/<int:pk>/", views.session_detail, name="session_detail"),
     path("sessions/<int:pk>/edit/", views.session_edit, name="session_edit"),

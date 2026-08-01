@@ -5,12 +5,18 @@
 
 24-hour clock in both: German convention, and unambiguous.
 
-NOTE — the weekday and month names below are user-facing strings that §14 does
-not contain, which is the one place this app knowingly holds copy outside the
-catalog. §10 specifies the *formats* and gives an example of each, but no table
-of names, and dates cannot be rendered without them. They belong in a §14.11;
-flagged rather than quietly settled. Everything else on every screen still comes
-from `catalog.py`.
+NOTE — this module is the one place this app knowingly holds user-facing copy
+outside the catalog, and everything here is flagged rather than quietly settled.
+Two gaps put it here, both belonging in a §14.11:
+
+* **weekday and month names.** §10 specifies the date *formats* and gives an
+  example of each, but no table of names, and dates cannot be rendered without
+  them;
+* **the two labels of a date-range picker.** §7.1 P3, §7.2 S5 and §7.3 A2 all
+  need one; §14 has `Zeitraum` for the group but nothing for the from and to
+  fields, and WCAG (§11) wants every control labelled, not just the fieldset.
+
+Everything else on every screen still comes from `catalog.py`.
 """
 
 from __future__ import annotations
@@ -26,6 +32,16 @@ MONTHS_EN = [
     "Jan", "Feb", "Mar", "Apr", "May", "Jun",
     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ]
+
+# Also awaiting a §14.11 — see the module note.
+RANGE_LABELS = {
+    "de": {"from": "Von", "to": "Bis"},
+    "en": {"from": "From", "to": "To"},
+}
+
+
+def range_label(which: str, locale: str) -> str:
+    return RANGE_LABELS.get(locale, RANGE_LABELS["de"])[which]
 
 
 def weekday(date: dt.date, locale: str) -> str:

@@ -1,0 +1,45 @@
+{% load copy display %}
+{# The list behind the number (§9.1) — every total is clickable through to the
+   sessions that produced it. P3 and A2's drill-down render the same thing. #}
+<div class="headline">
+  <p class="headline__number">{{ attended_count }}</p>
+  <p class="headline__label">{% t "p3.count_label" %}</p>
+  <p class="headline__range quiet">
+    {% if start or end %}{{ start|date:"Y-m-d" }} – {{ end|date:"Y-m-d" }}{% else %}{% t "p3.range_all" %}{% endif %}
+  </p>
+</div>
+
+{% if attended %}
+  <ul class="sessions">
+    {% for registration in attended %}
+      <li class="session">
+        <div class="session__when">{% when registration.session %}</div>
+        <div class="session__facts">
+          {% duration registration.session %} · {% where registration.session %}
+          · {{ registration.session.supervisor.full_name }}
+          {% if not registration.session.is_reviewed %}
+            · <span class="quiet">{% t "p3.not_reviewed" %}</span>
+          {% endif %}
+        </div>
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p class="empty">{% t "empty.no_participation" %}</p>
+{% endif %}
+
+{% if absent %}
+  {# §7.1 — the one reason the two numbers differ, so it is shown rather than
+     silently omitted. Quieter, but present. #}
+  <h2>{% t "p3.absent_group" %}</h2>
+  <ul class="sessions sessions--quiet">
+    {% for registration in absent %}
+      <li class="session">
+        <div class="session__when">{% when registration.session %}</div>
+        <div class="session__facts">
+          {% duration registration.session %} · {{ registration.session.supervisor.full_name }}
+        </div>
+      </li>
+    {% endfor %}
+  </ul>
+{% endif %}

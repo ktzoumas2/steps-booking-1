@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% load copy display %}
+
+{# S5 — My counts (§7.2). A supervisor invoices against these, and sees their
+   own only: not other supervisors', and not participants' (§3). #}
+
+{% block title %}{% t "s5.title" %} · {% t "app.name" %}{% endblock %}
+
+{% block content %}
+  <h1>{% t "s5.title" %}</h1>
+
+  {% include "screens/_date_range.html" %}
+
+  <div class="headline">
+    <p class="headline__number">{{ count }}</p>
+    <p class="headline__label">{% t "s5.sessions_held" %}</p>
+    <p class="headline__range quiet">
+      {% if start or end %}{{ start|date:"Y-m-d" }} – {{ end|date:"Y-m-d" }}{% else %}{% t "p3.range_all" %}{% endif %}
+    </p>
+  </div>
+
+  {% if held %}
+    <ul class="sessions">
+      {% for session in held %}
+        <li class="session">
+          <div class="session__when">{% when session %}</div>
+          <div class="session__facts">
+            {% duration session %} · {% where session %}
+            {% if not session.is_reviewed %}
+              · <span class="quiet">{% t "p3.not_reviewed" %}</span>
+            {% endif %}
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="empty">{% t "empty.no_own_sessions" %}</p>
+  {% endif %}
+{% endblock %}

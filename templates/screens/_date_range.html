@@ -1,0 +1,19 @@
+{% load copy range_labels %}
+{# §7.1 P3, §7.2 S5, §7.3 A2 — all time by default; the range is a narrowing.
+   The two field labels are not in §14 — see supervision/formatting.py. #}
+<form method="get" class="range">
+  <fieldset>
+    <legend>{% t "a1.filter_range" %}</legend>
+    <div class="range__fields">
+      <div class="field">
+        <label for="start">{% range_label "from" %}</label>
+        <input type="date" id="start" name="start" value="{{ start|date:'Y-m-d' }}">
+      </div>
+      <div class="field">
+        <label for="end">{% range_label "to" %}</label>
+        <input type="date" id="end" name="end" value="{{ end|date:'Y-m-d' }}">
+      </div>
+      <button type="submit" class="button">{% t "p3.range_pick" %}</button>
+    </div>
+  </fieldset>
+</form>

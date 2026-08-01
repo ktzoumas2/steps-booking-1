@@ -1,47 +1,13 @@
 {% extends "base.html" %}
-{% load copy display %}
+{% load copy %}
 
-{# P3 — My participation (§7.1). The date-range picker and the drill-down list
-   arrive with the counting slice; the headline number is real now and is simply
-   0, which §7.1 insists on showing rather than hiding. #}
+{# P3 — My participation (§7.1): "how many sessions have I attended, and which
+   ones?", answered without asking anyone. #}
 
 {% block title %}{% t "p3.title" %} · {% t "app.name" %}{% endblock %}
 
 {% block content %}
   {% include "screens/_p1_tabs.html" %}
-
-  <div class="headline">
-    <p class="headline__number">{{ attended_count }}</p>
-    <p class="headline__label">{% t "p3.count_label" %}</p>
-    <p class="headline__range quiet">{% t "p3.range_all" %}</p>
-  </div>
-
-  {% if attended %}
-    <ul class="sessions">
-      {% for session in attended %}
-        <li class="session">
-          <div class="session__when">{% when session %}</div>
-          <div class="session__facts">
-            {% duration session %} · {% where session %} · {{ session.supervisor.full_name }}
-          </div>
-        </li>
-      {% endfor %}
-    </ul>
-  {% else %}
-    <p class="empty">{% t "empty.no_participation" %}</p>
-  {% endif %}
-
-  {% if absent %}
-    {# The one reason the two numbers differ, so it is shown rather than
-       silently omitted — quieter, but present. #}
-    <h2>{% t "p3.absent_group" %}</h2>
-    <ul class="sessions sessions--quiet">
-      {% for session in absent %}
-        <li class="session">
-          <div class="session__when">{% when session %}</div>
-          <div class="session__facts">{% duration session %} · {{ session.supervisor.full_name }}</div>
-        </li>
-      {% endfor %}
-    </ul>
-  {% endif %}
+  {% include "screens/_date_range.html" %}
+  {% include "screens/_participation_record.html" %}
 {% endblock %}

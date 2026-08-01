@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% load copy %}
+
+{# §7.3 A2 — the same record the participant sees at P3, over the chosen range.
+   One definition of the figure, not two that can disagree. #}
+
+{% block title %}{{ participant.full_name }} · {% t "app.name" %}{% endblock %}
+
+{% block content %}
+  <h1>{{ participant.full_name }}</h1>
+  {% include "screens/_date_range.html" %}
+  {% include "screens/_participation_record.html" %}
+  <p><a class="button" href="{% url 'admin_counts' %}">{% t "action.back" %}</a></p>
+{% endblock %}
