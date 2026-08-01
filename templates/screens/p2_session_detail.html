@@ -46,6 +46,7 @@
       <p class="session__seats">{% t "p1.seats" taken=registered|length capacity=session.capacity %}</p>
 
       {% if i_am_registered %}
+        <p><a class="button" href="{% url 'session_ics' session.pk %}">{% t "p2.add_to_calendar" %}</a></p>
         <form method="post" action="{% url 'session_give_up_place' session.pk %}">
           {% csrf_token %}
           <input type="hidden" name="next" value="{{ request.get_full_path }}">

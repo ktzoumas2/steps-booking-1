@@ -9,6 +9,7 @@ from django.test import TestCase, TransactionTestCase
 from django.urls import reverse
 
 from supervision import registrations as registration_service
+from supervision import scheduling
 from supervision.clock import (
     FixedClock,
     today_in_berlin,
@@ -54,6 +55,8 @@ class SignUpScaffold(TestCase):
     def setUp(self):
         self.clock = FixedClock(REFERENCE)
         self.enterContext(using_clock(self.clock))
+        self.scheduler = scheduling.RecordingScheduler()
+        self.enterContext(scheduling.using_scheduler(self.scheduler))
         self.supervisor = make_user("sv@example.org", Role.SUPERVISOR, "Böttcher")
         self.amir = make_user("amir@example.org", Role.PARTICIPANT, "Haddad")
         self.nour = make_user("nour@example.org", Role.PARTICIPANT, "Saleh")

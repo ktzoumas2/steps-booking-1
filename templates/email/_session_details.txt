@@ -3,3 +3,6 @@
 {% t "s2.mode" %}: {% where session %}{% if session.mode == "online" and zoom_url %}
 {% t "p2.zoom_link" %}: {{ zoom_url }}{% endif %}
 {% t "label.supervisor" %}: {{ session.supervisor.full_name }}{% if session.supervisor.focus_area %} ({{ session.supervisor.focus_area }}){% endif %}
+{% if calendar_links %}
+{{ calendar_link_labels.google }}: {{ calendar_links.google }}
+{{ calendar_link_labels.outlook }}: {{ calendar_links.outlook }}{% endif %}

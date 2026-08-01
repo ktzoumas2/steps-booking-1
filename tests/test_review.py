@@ -11,6 +11,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from supervision import counting, registrations as registration_service
+from supervision import scheduling
 from supervision.clock import (
     FixedClock,
     today_in_berlin,
@@ -55,6 +56,8 @@ class ReviewScaffold(TestCase):
     def setUp(self):
         self.clock = FixedClock(REFERENCE)
         self.enterContext(using_clock(self.clock))
+        self.scheduler = scheduling.RecordingScheduler()
+        self.enterContext(scheduling.using_scheduler(self.scheduler))
         self.supervisor = make_user("sv@example.org", Role.SUPERVISOR, "Böttcher")
         self.other_supervisor = make_user("sv2@example.org", Role.SUPERVISOR, "Krause")
         self.admin = make_user("admin@example.org", Role.ADMIN)

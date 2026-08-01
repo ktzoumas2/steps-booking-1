@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from django.db import transaction
 from django.db.models import Count, Q
 
-from supervision import mail
+from supervision import mail, registrations
 from supervision.clock import iso_week, week_bounds
 from supervision.formatting import format_datetime
 from supervision.models import (
@@ -226,6 +226,24 @@ def update_session(
         return {}
 
     after = _describe(session, locale)
+
+    # §6.5 — moving a session in time reschedules its reminders. A participant
+    # already reminded about the old time is reminded again about the new one.
+    if "date" in changed or "start_time" in changed:
+        registrations.reschedule_reminders(session, now=now)
+
+    for registration in session.active_registrations().select_related("user"):
+        mail.send(
+            EmailKind.SESSION_CHANGED,
+            user=registration.user,
+            now=now,
+            session=session,
+            subject_params={"date": format_datetime(
+                session.date, session.start_time, registration.user.locale
+            )},
+            change=Change(before=before, after=after),
+        )
+
     mail.send(
         EmailKind.SESSION_CHANGED,
         user=session.supervisor,
@@ -249,8 +267,22 @@ def cancel_session(session: Session, *, by: User, now: dt.datetime) -> None:
         session.updated_at = now
         session.save()
 
-    # §8.1 — every actively-registered participant, and the supervisor. There
-    # are no registrations yet; the participant half arrives with them.
+    # §8.3 — cancel every scheduled reminder for it.
+    for registration in session.active_registrations().select_related("user"):
+        registrations.cancel_reminder(registration)
+
+    # §8.1 — every actively-registered participant, and the supervisor.
+    for registration in session.active_registrations().select_related("user"):
+        mail.send(
+            EmailKind.SESSION_CANCELLED,
+            user=registration.user,
+            now=now,
+            session=session,
+            subject_params={"date": format_datetime(
+                session.date, session.start_time, registration.user.locale
+            )},
+        )
+
     mail.send(
         EmailKind.SESSION_CANCELLED,
         user=session.supervisor,

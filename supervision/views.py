@@ -20,6 +20,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
 from supervision import (
+    calendar as ics,
     counting,
     exports,
     mail,
@@ -480,6 +481,28 @@ def session_not_held(request, pk):
         return redirect("home")
 
     return render(request, "screens/s3_not_held.html", {"session": session})
+
+
+@login_required
+def session_ics(request, pk):
+    """§7.1 P2 — `Zum Kalender hinzufügen`, the same .ics the emails carry.
+
+    For anyone who deleted the mail or signed up on a device that does not
+    handle attachments.
+    """
+    session = get_object_or_404(
+        Session.objects.select_related("supervisor"), pk=pk
+    )
+    body = ics.build_ics(
+        session,
+        request.user,
+        now=request.now,
+        method=ics.REQUEST,
+        zoom_url=Settings.load().zoom_url,
+    )
+    response = HttpResponse(body, content_type="text/calendar; charset=utf-8")
+    response["Content-Disposition"] = 'attachment; filename="supervision.ics"'
+    return response
 
 
 # --- Signing up and giving up a place (§6.2, §6.3) ------------------------

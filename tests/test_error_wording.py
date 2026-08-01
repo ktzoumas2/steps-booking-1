@@ -16,6 +16,7 @@ from django.urls import reverse
 
 from supervision import registrations as registration_service, sessions as session_service
 from supervision.catalog import t
+from supervision import scheduling
 from supervision.clock import (
     FixedClock,
     today_in_berlin,
@@ -32,6 +33,8 @@ class ErrorWordingScaffold(TestCase):
     def setUp(self):
         self.clock = FixedClock(REFERENCE)
         self.enterContext(using_clock(self.clock))
+        self.scheduler = scheduling.RecordingScheduler()
+        self.enterContext(scheduling.using_scheduler(self.scheduler))
         self.supervisor = self.user("sv@example.org", Role.SUPERVISOR, "Böttcher")
         self.other = self.user("sv2@example.org", Role.SUPERVISOR, "Krause")
         self.admin = self.user("admin@example.org", Role.ADMIN)

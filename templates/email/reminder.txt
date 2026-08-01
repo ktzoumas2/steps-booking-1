@@ -1,0 +1,4 @@
+{% load copy %}{% comment %}§8.1 — session details with a prominent join link or
+room. §14.10 gives this mail a subject but no body string, like
+registration_confirmed; the details block carries it.{% endcomment %}
+{% include "email/_session_details.txt" %}

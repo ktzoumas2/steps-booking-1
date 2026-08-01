@@ -35,6 +35,7 @@ urlpatterns = [
         views.session_not_held,
         name="session_not_held",
     ),
+    path("sessions/<int:pk>/calendar.ics", views.session_ics, name="session_ics"),
     path("sessions/<int:pk>/sign-up/", views.session_sign_up, name="session_sign_up"),
     path(
         "sessions/<int:pk>/give-up-place/",

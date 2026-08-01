@@ -20,25 +20,27 @@ something, say so and get it decided — don't resolve it silently in code.
 
 ## Status
 
-**Everything the spreadsheet did, and the exports that replace it.** Django
-5.2.16 on Python 3.13.13, installed with `uv`. All of §4's models exist. Ten of
-the twelve screens: sign-in, P1 (all three tabs), P2, P3, S1, S2, S3, S5, A1, A2.
+**Everything the spreadsheet did, plus invites and reminders.** Django 5.2.16
+on Python 3.13.13, installed with `uv`. All of §4's models exist. Ten of the
+twelve screens: sign-in, P1 (all three tabs), P2, P3, S1, S2, S3, S5, A1, A2.
 Plus the injected clock (§11), the §14 catalog with a test that keeps it and the
 spec identical, `create_admin` (§5.1), the weekly cap (§6.1), week grouping and
 the supervisor filter (§7.1), the atomic last seat (§6.2), the assumed-held
 default and its corrections (§6.4), the two counts of §9.1, the four CSV exports
-with their BOM (§9.2), the billing sign-off (§7.3), and six of the eight mails.
-Acceptance criteria 1–6, 8–25, 43–65, 67, 68 pass.
+with their BOM (§9.2), the billing sign-off (§7.3), all eight mails of §8.1
+except `invitation`, the `.ics` builder (§8.2) and the reminder scheduling port
+(§8.3). Acceptance criteria 1–6, 8–33, 43–65, 67–69 pass.
 
 Missing screens: **A3 (People) and A4 (Settings)** — so accounts and settings
 are still only reachable from `manage.py shell`.
 
 **Known gaps, deliberate and recorded rather than forgotten:**
 
-- **§14 has no weekday or month names.** §10 specifies the date *formats* and an
-  example of each, but no table of names, and dates cannot be rendered without
-  them. They live in `supervision/formatting.py` — the one place this app holds
-  user-facing copy outside the catalog — and belong in a §14.11.
+- **Five strings are missing from §14** and live in
+  `supervision/pending_copy.py`, the only place this app holds user-facing
+  copy outside the catalog: weekday names, month names, a date range's *from*
+  and *to*, and the two *Add to calendar* link labels. Each is explained
+  there; all belong in a §14.11.
 - **The weekly cap is checked on save only.** §7.2 also wants it inline as soon
   as the date is picked, which needs a little client-side scripting.
 - **The supervisor dropdown auto-submits** via a single inline `onchange`, the
@@ -49,15 +51,14 @@ are still only reachable from `manage.py shell`.
   §7.1 requires that screen (their name, and a way out); tidying the filter away
   would make criterion 19's second message unreachable. The current choice stays
   in the dropdown so the control still reflects its own state.
-- **§14 has no labels for a date-range picker's two fields.** `Zeitraum`
-  names the group; P3, S5 and A2 each need a *from* and a *to*, and WCAG
-  wants every control labelled. They sit in `formatting.py` with the
-  weekday names, awaiting the same §14.11.
 - **§14.10 has no `email.registration_confirmed.body`.** §8.1 says that mail
   carries "session details + how to cancel", but there is no string for the
   second half, so the mail currently sends the details alone.
-- **Session mails carry no link to the session.** The `.ics` and the URL both
-  wait on hosting settling what this app's base URL is (§13 question 8).
+- **Session mails carry no link to the session.** The `.ics` is attached, but
+  a URL into the app needs hosting to settle what its base URL is (§13 q8).
+- **Locally, reminders are sent at sign-up**, not held: `ImmediateScheduler`
+  ignores the timing, which §8.3 sanctions as complete and correct without a
+  provider. Tests use `RecordingScheduler`, which models a real one.
 - **SQLite needs `transaction_mode: IMMEDIATE`** for §6.2's atomic last seat —
   see the comment in `config/settings.py`. Do not remove it.
 - **No control returns `took_place` to `null`.** §6.4 allows it ("no claim
@@ -91,7 +92,8 @@ Agreed 2026-07-29. Each slice ends somewhere clickable, and the numbers are
    50 and 51 came with slice 3, and 60 fell out of the counting rules)
 7. ~~Counts on screen — S5, A2, P3 — the four CSVs, the export sign-off~~ —
    done (55–59, 61–64)
-8. Email bodies, the `.ics` builder, the two mail ports against fakes (26, 28–33)
+8. ~~Email bodies, the `.ics` builder, the scheduling port~~ — done (26,
+   28–33, 69, and the structure behind 35–42)
 9. Admin people and settings, the deactivation rules (66)
 10. The §12.2 seed fixture — the data the demo is shown with
 
@@ -162,6 +164,9 @@ supervision/    the single app
   review.py       §6.4 — recording what happened, and correcting it
   counting.py     §9.1 — the two counts, both written `is not False`
   exports.py      §9.2 — the four CSVs, UTF-8 **with BOM** for Excel
+  calendar.py     §8.2 — the .ics: stable UID, rising SEQUENCE, one attendee
+  scheduling.py   §8.3 — the three-operation port; the app decides, it carries out
+  pending_copy.py the only user-facing strings outside §14, each a flagged gap
   signin.py       §5 — magic-link issue and redemption
   mail.py         §8.1 — one sender for every kind of mail
   forms.py        S2, with the validation of §7.4

@@ -25,10 +25,11 @@ import time
 
 from django.db import OperationalError, transaction
 
-from supervision import mail
+from supervision import mail, scheduling
 from supervision.formatting import format_datetime
 from supervision.models import (
     EmailKind,
+    Settings,
     Registration,
     RegistrationSource,
     Session,
@@ -83,7 +84,7 @@ def sign_up(session: Session, participant: User, now: dt.datetime) -> Registrati
     )
 
     # Sent after the transaction commits: a mail cannot be unsent if the insert
-    # is rolled back, and §8.3's reminder scheduling will hang off the same point.
+    # is rolled back.
     mail.send(
         EmailKind.REGISTRATION_CONFIRMED,
         user=participant,
@@ -93,7 +94,88 @@ def sign_up(session: Session, participant: User, now: dt.datetime) -> Registrati
             "date": format_datetime(session.date, session.start_time, participant.locale)
         },
     )
+    arrange_reminder(registration, now=now)
     return registration
+
+
+def _send_reminder(registration: Registration, deliver_at: dt.datetime):
+    """The callable handed to the provider, run whenever it delivers.
+
+    `deliver_at` is what the EmailLog records, because that is when the mail
+    reaches the reader — the app is not running at that moment and has no other
+    instant to offer (§11 forbids reading a clock for it).
+    """
+
+    def send():
+        session = registration.session
+        participant = registration.user
+        mail.send(
+            EmailKind.REMINDER,
+            user=participant,
+            now=deliver_at,
+            session=session,
+            subject_params={
+                "date": format_datetime(
+                    session.date, session.start_time, participant.locale
+                )
+            },
+        )
+
+    return send
+
+
+def arrange_reminder(registration: Registration, *, now: dt.datetime) -> None:
+    """§8.3 — hand the reminder to the provider, or send it, or send nothing.
+
+    The decision is the app's; only the carrying-out belongs to the provider.
+    """
+    session = registration.session
+    lead_hours = Settings.load().reminder_lead_hours
+    plan = scheduling.plan_reminder(session, now, lead_hours)
+
+    if plan.action == "nothing":
+        return
+    if plan.action == "send_now":
+        mail.send(
+            EmailKind.REMINDER,
+            user=registration.user,
+            now=now,
+            session=session,
+            subject_params={
+                "date": format_datetime(
+                    session.date, session.start_time, registration.user.locale
+                )
+            },
+        )
+        return
+
+    message_id = scheduling.get_scheduler().schedule(
+        deliver_at=plan.deliver_at,
+        send=_send_reminder(registration, plan.deliver_at),
+    )
+    registration.reminder_message_id = message_id
+    registration.save(update_fields=["reminder_message_id"])
+
+
+def cancel_reminder(registration: Registration) -> None:
+    """§8.3 — cancel it, and forget the handle."""
+    if not registration.reminder_message_id:
+        return
+    scheduling.get_scheduler().cancel(registration.reminder_message_id)
+    registration.reminder_message_id = ""
+    registration.save(update_fields=["reminder_message_id"])
+
+
+def reschedule_reminders(session, *, now: dt.datetime) -> None:
+    """§6.5 — moving a session in time reschedules its reminders.
+
+    A participant already reminded about the old time is reminded again about
+    the new one, which is why this re-plans from scratch rather than only
+    moving handles that happen to exist.
+    """
+    for registration in session.active_registrations().select_related("user", "session"):
+        cancel_reminder(registration)
+        arrange_reminder(registration, now=now)
 
 
 def _take_a_seat(
@@ -154,6 +236,7 @@ def cancel_place(
     if registration is None:
         return None
 
+    cancel_reminder(registration)
     mail.send(
         EmailKind.REGISTRATION_CANCELLED,
         user=participant,
