@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% load copy %}
+
+{# Development only. Not a screen of §7, and none of its text comes from §14,
+   because none of it is ever shown to a user of the app. #}
+
+{% block title %}Sign in as… · {% t "app.name" %}{% endblock %}
+
+{% block content %}
+  <div class="panel">
+    <h1>Sign in as…</h1>
+    <p class="lede">
+      Development shortcut, available only with <code>DEBUG</code> on. The real
+      sign-in is a magic link (§5).
+    </p>
+    <ul class="people">
+      {% for person in people %}
+        <li>
+          <a href="{% url 'dev_sign_in_as_person' person.pk %}">
+            {{ person.full_name }}</a> · {{ person.role }} · {{ person.email }}
+        </li>
+      {% endfor %}
+    </ul>
+  </div>
+{% endblock %}

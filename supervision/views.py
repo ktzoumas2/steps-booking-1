@@ -13,7 +13,8 @@ from django.contrib import messages
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Q
-from django.http import HttpResponse, HttpResponseRedirect
+from django.conf import settings
+from django.http import Http404, HttpResponse, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
@@ -482,6 +483,32 @@ def session_not_held(request, pk):
         return redirect("home")
 
     return render(request, "screens/s3_not_held.html", {"session": session})
+
+
+# --- Development only -----------------------------------------------------
+
+
+def dev_sign_in_as(request, pk=None):
+    """Sign in as anyone, without a magic link. **DEBUG only.**
+
+    Agreed 2026-07-29 as a demonstration aid: showing three roles to someone
+    otherwise means fishing a link out of the terminal for each. It is hard
+    gated — with DEBUG off this route does not exist at all — and the real
+    magic-link flow of §5 is untouched and independently tested.
+    """
+    if not settings.DEBUG:
+        raise Http404
+
+    if pk is None:
+        return render(
+            request,
+            "screens/dev_sign_in_as.html",
+            {"people": User.objects.filter(is_active=True).order_by("role", "last_name")},
+        )
+
+    person = get_object_or_404(User, pk=pk, is_active=True)
+    login(request, person, backend=SIGNIN_BACKEND)
+    return redirect("home")
 
 
 # --- A3 and A4 — people and settings (§7.3) -------------------------------

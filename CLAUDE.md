@@ -30,10 +30,12 @@ default and its corrections (§6.4), the two counts of §9.1, the four CSV expor
 with their BOM (§9.2), the billing sign-off (§7.3), all eight mails of §8.1
 the `.ics` builder (§8.2) and the reminder scheduling port
 (§8.3), and all eight mails of §8.1.
+Plus the §12.2 fixture, behind `seed_demo`.
 **Acceptance criteria 1–33, 43–69 pass — everything except the ten that need a
 real email provider or a real calendar client (27, 34, 35–42).**
 
-Left to build: the §12.2 seed fixture.
+The first version is complete. What remains is not code: hosting (§13 q8), the
+email provider (§13 q7), and STEPS confirming the open questions of §13.
 
 **Known gaps, deliberate and recorded rather than forgotten:**
 
@@ -96,7 +98,7 @@ Agreed 2026-07-29. Each slice ends somewhere clickable, and the numbers are
 8. ~~Email bodies, the `.ics` builder, the scheduling port~~ — done (26,
    28–33, 69, and the structure behind 35–42)
 9. ~~Admin people and settings, the deactivation rules~~ — done (7, 66)
-10. The §12.2 seed fixture — the data the demo is shown with
+10. ~~The §12.2 seed fixture~~ — done, plus the DEBUG-only role switch
 
 Two things sit deliberately outside the numbering, both agreed 2026-07-29:
 
@@ -144,12 +146,13 @@ uv run manage.py test                     # the acceptance criteria (§12.3)
 uv run manage.py create_admin \
     --first-name X --last-name Y --email z@example.org
                                           # the install-time admin (§5.1)
-uv run manage.py seed_demo                # NOT BUILT YET — the §12.2 fixture
+uv run manage.py seed_demo [--reset]      # the §12.2 fixture — synthetic only
 uv run manage.py runserver                # http://127.0.0.1:8000
 ```
 
 Locally, email is written to the console — including magic links, which is how
-you sign in without a mail provider (§15).
+you sign in without a mail provider (§15). With `DEBUG` on, `/dev/sign-in-as/`
+skips that for demonstrations; the route 404s in any other configuration.
 
 ## Layout
 
@@ -164,6 +167,7 @@ supervision/    the single app
   registrations.py §6.2, §6.3 — sign-up, the atomic last seat, giving up a place
   review.py       §6.4 — recording what happened, and correcting it
   people.py       §4.1, §7.3 A3 — adding people, and the deactivation rules
+  demo.py         §12.2 — the fixture, shared by the demo and the tests (D42)
   counting.py     §9.1 — the two counts, both written `is not False`
   exports.py      §9.2 — the four CSVs, UTF-8 **with BOM** for Excel
   calendar.py     §8.2 — the .ics: stable UID, rising SEQUENCE, one attendee

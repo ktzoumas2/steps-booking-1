@@ -27,6 +27,13 @@ urlpatterns = [
         name="admin_person_state",
     ),
     path("settings/", views.admin_settings, name="admin_settings"),
+    # DEBUG only — see the view. 404s in any other configuration.
+    path("dev/sign-in-as/", views.dev_sign_in_as, name="dev_sign_in_as"),
+    path(
+        "dev/sign-in-as/<int:pk>/",
+        views.dev_sign_in_as,
+        name="dev_sign_in_as_person",
+    ),
     path(
         "counts/participant/<int:pk>/",
         views.admin_participant_record,
