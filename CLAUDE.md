@@ -27,12 +27,13 @@ Plus the injected clock (§11), the §14 catalog with a test that keeps it and t
 spec identical, `create_admin` (§5.1), the weekly cap (§6.1), week grouping and
 the supervisor filter (§7.1), the atomic last seat (§6.2), the assumed-held
 default and its corrections (§6.4), the two counts of §9.1, the four CSV exports
-with their BOM (§9.2), the billing sign-off (§7.3), all eight mails of §8.1
-the `.ics` builder (§8.2) and the reminder scheduling port
-(§8.3), and all eight mails of §8.1.
-Plus the §12.2 fixture, behind `seed_demo`.
-**Acceptance criteria 1–33, 43–69 pass — everything except the ten that need a
-real email provider or a real calendar client (27, 34, 35–42).**
+with their BOM (§9.2), the billing sign-off (§7.3), all eight mails of §8.1,
+the `.ics` builder (§8.2), the reminder scheduling port (§8.3), and the §12.2
+fixture behind `seed_demo`.
+
+**Every acceptance criterion of §12.3 passes except the eleven that need a real
+email provider or real calendar clients: 27, 34 and 35–42.** Those are not code
+problems — see §13 questions 7 and 8. 267 tests.
 
 The first version is complete. What remains is not code: hosting (§13 q8), the
 email provider (§13 q7), and STEPS confirming the open questions of §13.
@@ -72,13 +73,6 @@ email provider (§13 q7), and STEPS confirming the open questions of §13.
   `null` and `true` differ only in the `took_place` column of the §9.2 export.
   `Alles wie geplant` sets `true`, which is the more honest record of a human
   having looked.
-
-The first version is meant to cover **all twelve screens** (P1–P3, S1–S5, A1–A4)
-with sign-up, offering a session, the weekly cap, review and counts working, and
-to run locally on SQLite. Deliberately out of that first version: calendar
-invites (§8.2), real email delivery, and reminder scheduling (§8.3) — all three
-wait on the hosting and provider decisions, and none is needed to see how the
-app looks and behaves.
 
 ## Build order
 
@@ -208,6 +202,73 @@ pyproject.toml  dependencies, Python pin
 - Personal data (names, contact details, appointment reasons) is GDPR-relevant.
   Do not log it, do not send it to third-party services, and do not commit real
   data or fixtures derived from it.
+
+## Changing user-facing copy
+
+**§14 of `product-spec.md` and `supervision/catalog.py` are one artefact and
+must change together** (D39). `tests/test_catalog.py` parses §14 out of the
+document and fails if a single string, key or language differs — that is the
+mechanism, not an inconvenience to route around. Adding a string means adding a
+row to the right §14 table *and* an entry to the catalog, in the same commit.
+
+The only exception is `supervision/pending_copy.py`, which holds the handful of
+strings §14 does not yet contain; each is explained there and flagged above.
+
+## Testing conventions
+
+- **Place everything relative to a reference instant**, never on fixed calendar
+  dates (§12.2). Each test file defines `REFERENCE` and offsets from it, so the
+  suite cannot rot and can stand at any point in a session's life.
+- **Every test class installs the clock**:
+  `self.enterContext(using_clock(FixedClock(REFERENCE)))`.
+- **Anything that signs a participant up must also install
+  `scheduling.RecordingScheduler`**, which models a real provider by holding the
+  reminder. The default `ImmediateScheduler` sends at once, so without this you
+  get an unexpected second mail and can never observe the timing rules of §8.3.
+- **Assert on the rendered page for anything a user sees.** The test client
+  posts a dict, which bypasses the HTML form and CSRF entirely — a passing test
+  says nothing about whether a browser can produce that request. See the working
+  note below; this cost three defects.
+
+## Traps already paid for
+
+Each of these cost real time once. None is obvious from reading the code.
+
+- **A `ModelForm` writes the posted values onto its instance while validating.**
+  To find out what changed, re-read the stored row (`sessions.update_session`);
+  comparing against the instance finds every edit unchanged.
+- **`Select.format_value` must return a *list*.** Returning a bare value makes
+  Django iterate a scalar (`supervision/forms.py`, `QuarterHourSelect`).
+- **`url_has_allowed_host_and_scheme` takes `require_https`**, not
+  `require_secure`.
+- **`socket.getfqdn()` blocks for 30 seconds on this machine.** Django builds a
+  `Message-ID` from it, so `mail.py` sets its own from the sending domain. Do
+  not remove that, or the first sign-in after every restart hangs.
+- **Django's SQLite test database is shared-cache in-memory** and refuses locks
+  instead of waiting, which is why `registrations.py` retries on
+  `OperationalError`. File-backed SQLite and Postgres both wait instead.
+- **Django's `{# … #}` is a single-line comment.** Multi-line ones render onto
+  the page as text.
+
+## Settled, not open
+
+Decided during the build or with Kostas while testing. A fresh session should
+treat these as decisions, not as things to reconsider:
+
+- **The weekly cap advises; it never blocks** (2026-08-02). At the cap a yellow
+  warning, above it a red one, both confirmable. `enforce_weekly_cap` is gone.
+- **The cap check runs only when a session actually moves** — editing a room or
+  a capacity must not re-open a conversation about a week nothing is changing.
+- **Start time is a `<select>` of quarter hours**, not `<input type="time">`.
+  `step` constrains nothing a user can see.
+- **A2's sign-off is a button that writes `confirmed_at` / `confirmed_by`** and
+  deliberately leaves `took_place` alone — "I have checked the list" is a
+  statement about the reviewer, not about whether a session happened.
+- **A supervisor filter naming someone with nothing upcoming is kept**, because
+  §7.1 requires that screen.
+- **P2 shows the Zoom link to the session's supervisor and to admins**, not only
+  to registered participants (D11), because the alternative tells them to sign
+  up for something they cannot sign up for.
 
 ## Working notes
 
