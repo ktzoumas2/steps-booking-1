@@ -282,10 +282,8 @@ COPY: dict[str, dict[str, str]] = {
         "cannot go below that.",
     },
     "warn.week_full": {
-        "de": "In dieser Woche gibt es bereits %(count)s Termine: %(sessions)s. "
-        "Trotzdem speichern?",
-        "en": "There are already %(count)s sessions that week: %(sessions)s. "
-        "Save anyway?",
+        "de": "Bereits in dieser Woche: %(sessions)s. Trotzdem speichern?",
+        "en": "Already that week: %(sessions)s. Save anyway?",
     },
     "confirm.cap_override": {
         "de": "Damit überschreiten Sie die Obergrenze von %(cap)s Terminen pro "

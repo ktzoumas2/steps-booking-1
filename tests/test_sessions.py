@@ -340,14 +340,27 @@ class StartTimeStepTests(SessionScaffold):
         self.assertEqual(Session.objects.count(), 0)
         self.assertContains(response, "15-Minuten-Schritten")
 
-    def test_the_field_itself_steps_in_quarter_hours(self):
-        # So the browser's own picker moves in 15-minute jumps and explains
-        # itself, in the reader's language, before the server has to.
+    def test_the_control_only_offers_quarter_hours(self):
+        # A dropdown can only produce the times it lists, so the rule is visible
+        # rather than something you discover by being told off.
         self.sign_in(self.supervisor)
 
-        response = self.client.get(reverse("session_new"))
+        body = self.client.get(reverse("session_new")).content.decode()
 
-        self.assertContains(response, 'step="900"')
+        self.assertIn('<option value="10:15">10:15</option>', body)
+        self.assertIn('<option value="00:00">00:00</option>', body)
+        self.assertNotIn('value="10:07"', body)
+        self.assertEqual(body.count("<option value=\"1"), 4 * 10)  # 10:00–19:45
+
+    def test_the_stored_time_comes_back_selected_when_editing(self):
+        session = make_session(self.supervisor, days_from_reference=7)
+        session.start_time = dt.time(14, 30)
+        session.save()
+        self.sign_in(self.supervisor)
+
+        response = self.client.get(reverse("session_edit", args=[session.pk]))
+
+        self.assertContains(response, '<option value="14:30" selected>')
 
 
 class EditingTests(SessionScaffold):

@@ -1421,7 +1421,7 @@ it is a find-and-replace in this table, not a rewrite.
 | --- | --- | --- |
 | `err.room_required` | Bitte geben Sie einen Raum an — Termine vor Ort brauchen einen Ort. | Please give a room — in-person sessions need a location. |
 | `err.capacity_below_registered` | Es sind bereits %(count)s Personen angemeldet. Weniger Plätze sind nicht möglich. | %(count)s people are already registered. The number of seats cannot go below that. |
-| `warn.week_full` | In dieser Woche gibt es bereits %(count)s Termine: %(sessions)s. Trotzdem speichern? | There are already %(count)s sessions that week: %(sessions)s. Save anyway? |
+| `warn.week_full` | Bereits in dieser Woche: %(sessions)s. Trotzdem speichern? | Already that week: %(sessions)s. Save anyway? |
 | `confirm.cap_override` | Damit überschreiten Sie die Obergrenze von %(cap)s Terminen pro Woche. | This exceeds the cap of %(cap)s sessions per week. |
 | `err.session_just_filled` | Dieser Termin ist gerade belegt worden. Der letzte Platz ist an jemand anderen gegangen. | This session has just filled up. The last seat went to someone else. |
 | `err.time_step` | Bitte wählen Sie eine Uhrzeit in 15-Minuten-Schritten, zum Beispiel 10:00 oder 10:15. | Please choose a time in 15-minute steps, for example 10:00 or 10:15. |

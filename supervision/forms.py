@@ -16,6 +16,34 @@ from supervision.clock import today_in_berlin
 from supervision.models import Mode, Role, Session, Settings, User  # noqa: F401
 
 
+QUARTER_HOURS = [
+    (f"{hour:02d}:{minute:02d}", f"{hour:02d}:{minute:02d}")
+    for hour in range(24)
+    for minute in (0, 15, 30, 45)
+]
+
+
+class QuarterHourSelect(forms.Select):
+    """§7.2 — a start time you pick, not one you type.
+
+    `<input type="time" step="900">` only constrains the spinner arrows: most
+    browsers still accept a typed 10:07, and none of them *offer* quarter hours.
+    A select can only produce the times it lists, which is what makes the rule
+    visible rather than something you discover by being told off.
+    """
+
+    def format_value(self, value):
+        # The stored value arrives as a time (10:15) or a full string
+        # ("10:15:00"); either way the options are keyed "10:15". Normalise it
+        # and let the base class do the rest — it returns a *list*, and a bare
+        # value here makes Django iterate a scalar.
+        if isinstance(value, dt.time):
+            value = value.strftime("%H:%M")
+        elif isinstance(value, str) and len(value) > 5:
+            value = value[:5]
+        return super().format_value(value)
+
+
 class SessionForm(forms.ModelForm):
     class Meta:
         model = Session
@@ -30,10 +58,7 @@ class SessionForm(forms.ModelForm):
         ]
         widgets = {
             "date": forms.DateInput(attrs={"type": "date"}),
-            # §7.2 — quarter hours only. `step` makes the browser's own
-            # picker move in 15-minute jumps and refuse anything else, in
-            # the reader's language; `clean_start_time` is the real guard.
-            "start_time": forms.TimeInput(attrs={"type": "time", "step": 900}),
+            "start_time": QuarterHourSelect(choices=QUARTER_HOURS),
         }
 
     def __init__(self, *args, editor: User, now: dt.datetime, locale: str, **kwargs):

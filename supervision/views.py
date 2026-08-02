@@ -729,10 +729,6 @@ def _cap_decision(check, editor, locale):
     if check.level == session_service.CLEAR:
         return None
 
-    listed = {
-        "count": len(check.clashing),
-        "sessions": session_service.describe_sessions(check.clashing, locale),
-    }
     over = check.level == session_service.OVER_CAP
 
     return {
@@ -741,7 +737,11 @@ def _cap_decision(check, editor, locale):
         "message": (
             t("confirm.cap_override", locale, cap=check.cap)
             if over
-            else t("warn.week_full", locale, **listed)
+            else t(
+                "warn.week_full",
+                locale,
+                sessions=session_service.describe_sessions(check.clashing, locale),
+            )
         ),
         "clashing": check.clashing,
     }

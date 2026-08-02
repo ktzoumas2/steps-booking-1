@@ -139,7 +139,6 @@ class WeeklyCapWordingTests(ErrorWordingScaffold):
         return t(
             key,
             locale,
-            count=len(clashing),
             sessions=session_service.describe_sessions(clashing, locale),
         )
 
