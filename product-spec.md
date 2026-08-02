@@ -276,7 +276,6 @@ this, and when" is the only question that gets asked.
 | `default_duration_minutes` | integer | 90 **[D]** | pre-fills the session form |
 | `default_capacity` | integer | 5 | pre-fills the session form |
 | `weekly_session_cap` | integer | 2 | programme-wide, see §6.1 |
-| `enforce_weekly_cap` | bool | true | true = block, false = warn only |
 | `reminder_lead_hours` | integer | 24 **[D]** | how far ahead the reminder goes out |
 
 ### 4.5 `LoginToken`
@@ -357,15 +356,19 @@ same weekly total.
 - A session's week is its **ISO week (Mon–Sun) in Europe/Berlin**, by `date`.
 - The count for a week includes every session with `status = offered` (regardless of
   `took_place`) and excludes `cancelled` ones.
-- When a supervisor saves a session that would make the count **exceed**
-  `weekly_session_cap` (default 2):
-  - `enforce_weekly_cap = true` → **block**, with a message naming the existing
-    sessions that week (date, time, supervisor) so they can pick a different week.
-  - `enforce_weekly_cap = false` → **warn** and let them continue after confirming.
-- **The check applies on edit too**, not just create — moving a session into a full
-  week is the same problem. Editing a session without changing its date must not
-  count the session against itself.
-- **An admin can always override**, with an explicit confirmation step.
+- **[D]** **Nothing is ever blocked.** The cap advises; it does not refuse.
+  Whoever is saving, the session can always be saved after confirming — the app
+  does not know why a week needs three sessions, and the person in front of it
+  usually does. What it can do is make sure nobody clusters sessions by accident.
+- When a supervisor saves a session, count what the week *would* then hold:
+  - **at `weekly_session_cap`** (default 2) → a **warning**, naming the sessions
+    already there, which can be confirmed;
+  - **above it** → the **same list, stated more strongly**, which can also be
+    confirmed. This is the programme's own limit being exceeded, and it should
+    look like it.
+- **The check applies on edit too**, not just create — moving a session into a
+  busy week is the same problem. Editing a session without changing its date must
+  not count the session against itself.
 - A cancelled session frees its slot immediately.
 
 ### 6.2 Capacity and sign-up
@@ -642,9 +645,9 @@ languages, is in §14 under the key given here.
 | --- | --- | --- |
 | `mode = in_person` saved with no room | `err.room_required` | That in-person sessions need a room |
 | Capacity set below current registrations (§6.5) | `err.capacity_below_registered` | The current number registered, so the supervisor knows the floor |
-| Weekly cap would be exceeded, `enforce_weekly_cap = true` (§6.1) | `err.week_full` | **The clashing sessions — date, time, supervisor** — so another week can be picked without hunting for them |
-| Weekly cap would be exceeded, enforcement off | `warn.week_full` | The same list, phrased as a warning that can be confirmed |
-| Admin overriding the cap (§6.1) | `confirm.cap_override` | That they are exceeding the programme's own limit |
+| Week would reach the cap (§6.1) | `warn.week_full` | **The clashing sessions — date, time, supervisor** — so another week can be chosen without hunting for them |
+| Week would go above the cap (§6.1) | `confirm.cap_override` | That they are exceeding the programme's own limit. Confirmable, like the one above |
+| Start time not on a quarter hour (§7.2) | `err.time_step` | Which times are acceptable, with an example |
 | Signing up for a session that just filled (§6.2) | `err.session_just_filled` | That the seat went to someone else in the last moment — **not** a generic failure, which reads as a bug |
 | Session date in the past on create or edit | `err.date_in_past` | That sessions cannot be offered backwards |
 | Magic link expired | `err.link_expired` | The 15-minute limit, and a button to request a fresh one |
@@ -1001,13 +1004,15 @@ Testable, in build order.
 8. A supervisor creates an in-person session; it appears to participants immediately.
 9. An online session shows the settings Zoom link; changing that setting changes it
     everywhere.
-10. Creating a third session in an already-full ISO week is blocked, and the message
-    names the two existing sessions.
-11. With `enforce_weekly_cap = false`, the same attempt warns and can be confirmed.
+10. A second session in an ISO week warns, naming the one already there, and
+    saves once confirmed.
+11. A third warns more strongly, naming both, and also saves once confirmed.
 12. Editing a session's date into a full week is blocked the same way; saving it without
     changing the date is not blocked by its own existence.
-13. An admin can override the block.
+13. Nothing is ever blocked: the same save goes through on confirmation,
+    whoever is making it.
 14. `mode = in_person` cannot be saved without a room.
+14a. A start time can be set to 10:15 but not to 10:07 — quarter hours only.
 
 **Browsing and filtering**
 15. The Available tab groups upcoming sessions under calendar-week headings, in date
@@ -1395,7 +1400,6 @@ it is a find-and-replace in this table, not a rewrite.
 | `a4.default_duration` | Standarddauer (Minuten) | Default duration (minutes) |
 | `a4.default_capacity` | Standardanzahl Plätze | Default number of seats |
 | `a4.weekly_cap` | Termine pro Woche (Obergrenze) | Sessions per week (cap) |
-| `a4.enforce_cap` | Obergrenze durchsetzen | Enforce the cap |
 | `a4.reminder_lead` | Erinnerung senden (Stunden vorher) | Send reminder (hours before) |
 
 ### 14.8 Empty states (§7)
@@ -1417,10 +1421,10 @@ it is a find-and-replace in this table, not a rewrite.
 | --- | --- | --- |
 | `err.room_required` | Bitte geben Sie einen Raum an — Termine vor Ort brauchen einen Ort. | Please give a room — in-person sessions need a location. |
 | `err.capacity_below_registered` | Es sind bereits %(count)s Personen angemeldet. Weniger Plätze sind nicht möglich. | %(count)s people are already registered. The number of seats cannot go below that. |
-| `err.week_full` | In dieser Woche gibt es bereits %(count)s Termine: %(sessions)s. Bitte wählen Sie eine andere Woche. | There are already %(count)s sessions that week: %(sessions)s. Please choose a different week. |
 | `warn.week_full` | In dieser Woche gibt es bereits %(count)s Termine: %(sessions)s. Trotzdem speichern? | There are already %(count)s sessions that week: %(sessions)s. Save anyway? |
 | `confirm.cap_override` | Damit überschreiten Sie die Obergrenze von %(cap)s Terminen pro Woche. | This exceeds the cap of %(cap)s sessions per week. |
 | `err.session_just_filled` | Dieser Termin ist gerade belegt worden. Der letzte Platz ist an jemand anderen gegangen. | This session has just filled up. The last seat went to someone else. |
+| `err.time_step` | Bitte wählen Sie eine Uhrzeit in 15-Minuten-Schritten, zum Beispiel 10:00 oder 10:15. | Please choose a time in 15-minute steps, for example 10:00 or 10:15. |
 | `err.date_in_past` | Das Datum liegt in der Vergangenheit. Termine lassen sich nur für die Zukunft anbieten. | That date is in the past. Sessions can only be offered for the future. |
 | `err.link_expired` | Dieser Link ist abgelaufen — er gilt 15 Minuten. Fordern Sie einen neuen an. | This link has expired — links are valid for 15 minutes. Please request a new one. |
 | `err.link_used` | Dieser Link wurde bereits verwendet. Jeder Link funktioniert genau einmal. | This link has already been used. Each link works exactly once. |

@@ -233,7 +233,6 @@ COPY: dict[str, dict[str, str]] = {
         "de": "Termine pro Woche (Obergrenze)",
         "en": "Sessions per week (cap)",
     },
-    "a4.enforce_cap": {"de": "Obergrenze durchsetzen", "en": "Enforce the cap"},
     "a4.reminder_lead": {
         "de": "Erinnerung senden (Stunden vorher)",
         "en": "Send reminder (hours before)",
@@ -282,12 +281,6 @@ COPY: dict[str, dict[str, str]] = {
         "en": "%(count)s people are already registered. The number of seats "
         "cannot go below that.",
     },
-    "err.week_full": {
-        "de": "In dieser Woche gibt es bereits %(count)s Termine: %(sessions)s. "
-        "Bitte wählen Sie eine andere Woche.",
-        "en": "There are already %(count)s sessions that week: %(sessions)s. "
-        "Please choose a different week.",
-    },
     "warn.week_full": {
         "de": "In dieser Woche gibt es bereits %(count)s Termine: %(sessions)s. "
         "Trotzdem speichern?",
@@ -304,6 +297,12 @@ COPY: dict[str, dict[str, str]] = {
         "jemand anderen gegangen.",
         "en": "This session has just filled up. The last seat went to someone "
         "else.",
+    },
+    "err.time_step": {
+        "de": "Bitte wählen Sie eine Uhrzeit in 15-Minuten-Schritten, zum "
+        "Beispiel 10:00 oder 10:15.",
+        "en": "Please choose a time in 15-minute steps, for example 10:00 or "
+        "10:15.",
     },
     "err.date_in_past": {
         "de": "Das Datum liegt in der Vergangenheit. Termine lassen sich nur für "

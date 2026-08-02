@@ -30,7 +30,10 @@ class SessionForm(forms.ModelForm):
         ]
         widgets = {
             "date": forms.DateInput(attrs={"type": "date"}),
-            "start_time": forms.TimeInput(attrs={"type": "time"}),
+            # §7.2 — quarter hours only. `step` makes the browser's own
+            # picker move in 15-minute jumps and refuse anything else, in
+            # the reader's language; `clean_start_time` is the real guard.
+            "start_time": forms.TimeInput(attrs={"type": "time", "step": 900}),
         }
 
     def __init__(self, *args, editor: User, now: dt.datetime, locale: str, **kwargs):
@@ -62,6 +65,12 @@ class SessionForm(forms.ModelForm):
         if date < today_in_berlin(self.now):
             raise forms.ValidationError(t("err.date_in_past", self.locale))
         return date
+
+    def clean_start_time(self):
+        start_time = self.cleaned_data["start_time"]
+        if start_time.minute % 15 or start_time.second:
+            raise forms.ValidationError(t("err.time_step", self.locale))
+        return start_time
 
     def clean_capacity(self):
         capacity = self.cleaned_data["capacity"]
@@ -130,6 +139,5 @@ class SettingsForm(forms.ModelForm):
             "default_duration_minutes",
             "default_capacity",
             "weekly_session_cap",
-            "enforce_weekly_cap",
             "reminder_lead_hours",
         ]

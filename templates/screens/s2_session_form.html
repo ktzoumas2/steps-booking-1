@@ -16,7 +16,7 @@
     {% comment %} §7.4, D41 — the clashing sessions are named, because the supervisor's
        next action is picking a different week and they cannot do that without
        knowing what is already in this one. {% endcomment %}
-    <div class="notice {% if cap.confirmable %}notice--warning{% else %}notice--error{% endif %}" role="alert">
+    <div class="notice {% if cap.severe %}notice--error{% else %}notice--warning{% endif %}" role="alert">
       <p>{{ cap.message }}</p>
       <ul class="clashing">
         {% for clash in cap.clashing %}
@@ -49,7 +49,7 @@
         </div>
       {% endfor %}
 
-      {% if cap.confirmable %}
+      {% if cap %}
         <input type="hidden" name="confirm_week" value="1">
       {% endif %}
 

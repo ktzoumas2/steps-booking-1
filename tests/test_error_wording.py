@@ -119,17 +119,21 @@ class SessionFormWordingTests(ErrorWordingScaffold):
 class WeeklyCapWordingTests(ErrorWordingScaffold):
     """The one error message in the app that does real work (D41)."""
 
-    def fill_the_week(self):
+    def fill_the_week(self, count=2):
         monday = today_in_berlin(REFERENCE + dt.timedelta(days=7))
         while monday.isoweekday() != 1:
             monday += dt.timedelta(days=1)
-        first = self.session(self.supervisor, 30, start_time=dt.time(10, 0))
-        first.date = monday
-        first.save()
-        second = self.session(self.other, 30, start_time=dt.time(14, 0))
-        second.date = monday + dt.timedelta(days=2)
-        second.save()
-        return monday, [first, second]
+        existing = []
+        for index in range(count):
+            session = self.session(
+                self.supervisor if index % 2 == 0 else self.other,
+                30,
+                start_time=dt.time(10 + index * 4, 0),
+            )
+            session.date = monday + dt.timedelta(days=index)
+            session.save()
+            existing.append(session)
+        return monday, existing
 
     def expected(self, key, clashing, locale="de"):
         return t(
@@ -139,47 +143,38 @@ class WeeklyCapWordingTests(ErrorWordingScaffold):
             sessions=session_service.describe_sessions(clashing, locale),
         )
 
-    def test_err_week_full_names_the_clashing_sessions(self):
-        monday, clashing = self.fill_the_week()
-        self.sign_in(self.supervisor)
-
-        response = self.offer(date=(monday + dt.timedelta(days=4)).isoformat())
-
-        self.assertContains(response, self.expected("err.week_full", clashing))
-
-    def test_warn_week_full_says_the_same_and_can_be_confirmed(self):
-        settings = Settings.load()
-        settings.enforce_weekly_cap = False
-        settings.save()
-        monday, clashing = self.fill_the_week()
+    def test_warn_week_full_at_the_cap(self):
+        monday, clashing = self.fill_the_week(1)
         self.sign_in(self.supervisor)
 
         response = self.offer(date=(monday + dt.timedelta(days=4)).isoformat())
 
         self.assertContains(response, self.expected("warn.week_full", clashing))
 
-    def test_confirm_cap_override_for_an_admin(self):
-        monday, _ = self.fill_the_week()
-        self.sign_in(self.admin)
-
-        response = self.offer(
-            date=(monday + dt.timedelta(days=4)).isoformat(),
-            supervisor=self.supervisor.pk,
-        )
-
-        self.assertContains(
-            response, t("confirm.cap_override", "de", cap=2)
-        )
-
-    def test_the_block_reads_in_english_for_an_english_speaker(self):
-        # §7.4 — "in the recipient's language".
-        User.objects.filter(pk=self.supervisor.pk).update(locale="en")
-        monday, clashing = self.fill_the_week()
+    def test_confirm_cap_override_above_the_cap(self):
+        monday, _ = self.fill_the_week(2)
         self.sign_in(self.supervisor)
 
         response = self.offer(date=(monday + dt.timedelta(days=4)).isoformat())
 
-        self.assertContains(response, self.expected("err.week_full", clashing, "en"))
+        self.assertContains(response, t("confirm.cap_override", "de", cap=2))
+
+    def test_it_reads_in_english_for_an_english_speaker(self):
+        # §7.4 — "in the recipient's language".
+        User.objects.filter(pk=self.supervisor.pk).update(locale="en")
+        monday, clashing = self.fill_the_week(1)
+        self.sign_in(self.supervisor)
+
+        response = self.offer(date=(monday + dt.timedelta(days=4)).isoformat())
+
+        self.assertContains(response, self.expected("warn.week_full", clashing, "en"))
+
+    def test_err_time_step(self):
+        self.sign_in(self.supervisor)
+
+        response = self.offer(start_time="10:07")
+
+        self.assertContains(response, t("err.time_step", "de"))
 
 
 class SignUpAndLinkWordingTests(ErrorWordingScaffold):

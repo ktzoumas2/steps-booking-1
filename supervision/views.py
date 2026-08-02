@@ -720,33 +720,29 @@ def _may_manage(user, session=None) -> bool:
 def _cap_decision(check, editor, locale):
     """What the weekly cap (§6.1) has to say, in the words of §7.4.
 
-    Three different answers, and conflating them would be a mistake: an admin is
-    always allowed through after confirming (§6.1), enforcement on is a block a
-    supervisor cannot argue with, and enforcement off is a warning they can.
+    Two levels, both confirmable, because the cap advises rather than refuses:
+    reaching it is worth a word, exceeding the programme's own limit is worth a
+    stronger one. Both name the sessions already there — the next action is
+    choosing another week, and nobody can do that without knowing what is in
+    this one (D41).
     """
-    if not check.would_exceed:
+    if check.level == session_service.CLEAR:
         return None
 
     listed = {
         "count": len(check.clashing),
         "sessions": session_service.describe_sessions(check.clashing, locale),
     }
+    over = check.level == session_service.OVER_CAP
 
-    if editor.is_admin:
-        return {
-            "confirmable": True,
-            "message": t("confirm.cap_override", locale, cap=check.cap),
-            "clashing": check.clashing,
-        }
-    if check.enforced:
-        return {
-            "confirmable": False,
-            "message": t("err.week_full", locale, **listed),
-            "clashing": check.clashing,
-        }
     return {
-        "confirmable": True,
-        "message": t("warn.week_full", locale, **listed),
+        "level": check.level,
+        "severe": over,
+        "message": (
+            t("confirm.cap_override", locale, cap=check.cap)
+            if over
+            else t("warn.week_full", locale, **listed)
+        ),
         "clashing": check.clashing,
     }
 
@@ -772,6 +768,15 @@ def session_edit(request, pk):
 
 
 def _session_form(request, session):
+    # Read the stored date *before* validating: a ModelForm writes the posted
+    # values onto its instance as it validates, so afterwards there is nothing
+    # left to compare against.
+    stored_date = (
+        Session.objects.values_list("date", flat=True).get(pk=session.pk)
+        if session is not None
+        else None
+    )
+
     form_kwargs = {
         "editor": request.user,
         "now": request.now,
@@ -790,14 +795,21 @@ def _session_form(request, session):
     decision = None
 
     if form.is_valid():
-        settings = Settings.load()
-        check = session_service.check_weekly_cap(
-            form.cleaned_data["date"], settings, exclude=session
-        )
-        decision = _cap_decision(check, request.user, request.locale)
+        # §6.1 — the check applies on edit too, but only when the session is
+        # actually moving. Editing a room or a capacity should not re-open a
+        # conversation about a week the session is already in and is not
+        # changing; that is nagging, not advice.
+        moving = stored_date is None or form.cleaned_data["date"] != stored_date
+        decision = None
+        if moving:
+            check = session_service.check_weekly_cap(
+                form.cleaned_data["date"], Settings.load(), exclude=session
+            )
+            decision = _cap_decision(check, request.user, request.locale)
         confirmed = request.POST.get("confirm_week") == "1"
 
-        if decision is None or (decision["confirmable"] and confirmed):
+        # Nothing is blocked (§6.1): a confirmed save always goes through.
+        if decision is None or confirmed:
             fields = dict(form.cleaned_data)
             supervisor = fields.pop("supervisor", None) or (
                 session.supervisor if session else request.user

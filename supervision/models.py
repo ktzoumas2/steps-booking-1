@@ -184,7 +184,6 @@ class Settings(models.Model):
     default_duration_minutes = models.PositiveIntegerField(default=90)
     default_capacity = models.PositiveIntegerField(default=5)
     weekly_session_cap = models.PositiveIntegerField(default=2)
-    enforce_weekly_cap = models.BooleanField(default=True)
     reminder_lead_hours = models.PositiveIntegerField(default=24)
 
     class Meta:

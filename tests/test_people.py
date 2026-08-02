@@ -233,7 +233,6 @@ class SettingsScreenTests(PeopleScaffold):
                 "default_duration_minutes": "90",
                 "default_capacity": "5",
                 "weekly_session_cap": "2",
-                "enforce_weekly_cap": "on",
                 "reminder_lead_hours": "24",
             },
         )
@@ -251,7 +250,6 @@ class SettingsScreenTests(PeopleScaffold):
                 "default_duration_minutes": "90",
                 "default_capacity": "5",
                 "weekly_session_cap": "5",
-                "enforce_weekly_cap": "on",
                 "reminder_lead_hours": "24",
             },
         )
@@ -266,7 +264,6 @@ class SettingsScreenTests(PeopleScaffold):
                 "default_duration_minutes": "60",
                 "default_capacity": "8",
                 "weekly_session_cap": "2",
-                "enforce_weekly_cap": "on",
                 "reminder_lead_hours": "24",
             },
         )

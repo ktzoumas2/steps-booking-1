@@ -32,22 +32,42 @@ NOTIFIABLE_FIELDS = ("date", "start_time", "duration_minutes", "mode", "room")
 # --- The weekly distribution cap (§6.1) -----------------------------------
 
 
+CLEAR, AT_CAP, OVER_CAP = "clear", "at_cap", "over_cap"
+
+
 @dataclass(frozen=True)
 class WeeklyCapCheck:
     """What the cap has to say about putting a session in a given week.
 
-    The intent behind it is even distribution — roughly one session a week —
-    so that participants have a steady supply rather than three in one week and
-    nothing for a fortnight.
+    The intent is even distribution — roughly one session a week — so that
+    participants have a steady supply rather than three in one week and nothing
+    for a fortnight.
+
+    **The cap advises; it never refuses.** The app does not know why a week
+    needs three sessions and the person in front of it usually does, so both
+    levels below are confirmable. What the cap can do is make sure nobody
+    clusters sessions by accident, which is the failure §1.2 actually names.
     """
 
     cap: int
-    enforced: bool
     clashing: list[Session] = field(default_factory=list)
 
     @property
-    def would_exceed(self) -> bool:
-        return len(self.clashing) + 1 > self.cap
+    def week_would_hold(self) -> int:
+        """Including the session being saved."""
+        return len(self.clashing) + 1
+
+    @property
+    def level(self) -> str:
+        if self.week_would_hold > self.cap:
+            return OVER_CAP
+        if self.week_would_hold == self.cap:
+            return AT_CAP
+        return CLEAR
+
+    @property
+    def needs_confirmation(self) -> bool:
+        return self.level != CLEAR
 
 
 def sessions_in_week_of(date: dt.date, exclude: Session | None = None):
@@ -71,7 +91,6 @@ def check_weekly_cap(
 ) -> WeeklyCapCheck:
     return WeeklyCapCheck(
         cap=settings.weekly_session_cap,
-        enforced=settings.enforce_weekly_cap,
         clashing=list(sessions_in_week_of(date, exclude=exclude)),
     )
 

@@ -205,69 +205,100 @@ class ScreensRenderTests(SessionScaffold):
 
 
 class WeeklyCapTests(SessionScaffold):
-    """§6.1 — programme-wide, ISO weeks, and the message names the clash."""
+    """§6.1 — programme-wide, ISO weeks, advice rather than refusal.
 
-    def fill_the_week(self):
-        """Two sessions in the week the tests then try to add a third to."""
-        monday = (REFERENCE + dt.timedelta(days=5)).date()  # the following Monday
+    With the cap at 2: the second session in a week warns, the third warns more
+    strongly, and neither is ever blocked.
+    """
+
+    def week_with(self, count):
+        """Put `count` sessions into one ISO week and return its Monday."""
+        monday = (REFERENCE + dt.timedelta(days=5)).date()
         while monday.isoweekday() != 1:
             monday += dt.timedelta(days=1)
-        first = make_session(self.supervisor, days_from_reference=0, hour=10)
-        first.date = monday
-        first.save()
-        second = make_session(self.other_supervisor, days_from_reference=0, hour=14)
-        second.date = monday + dt.timedelta(days=2)
-        second.save()
-        return monday, [first, second]
+        supervisors = [self.supervisor, self.other_supervisor]
+        existing = []
+        for index in range(count):
+            session = make_session(supervisors[index % 2], days_from_reference=0)
+            session.date = monday + dt.timedelta(days=index)
+            session.start_time = dt.time(10 + index, 0)
+            session.save()
+            existing.append(session)
+        return monday, existing
 
-    def test_a_third_session_in_a_full_week_is_blocked_and_names_the_other_two(self):
+    def test_the_second_session_in_a_week_warns_and_then_saves(self):
         # Criterion 10.
-        monday, existing = self.fill_the_week()
+        monday, _ = self.week_with(1)
+        date = (monday + dt.timedelta(days=4)).isoformat()
+
+        warned = self.offer(date=date)
+        self.assertEqual(Session.objects.count(), 1)
+        self.assertContains(warned, "Trotzdem speichern?")
+        self.assertContains(warned, "notice--warning")
+        self.assertNotContains(warned, "notice--error")
+
+        self.offer(date=date, confirm=True)
+        self.assertEqual(Session.objects.count(), 2)
+
+    def test_the_third_warns_more_strongly_and_then_saves(self):
+        # Criterion 11 — allowed, but it should look like what it is.
+        monday, _ = self.week_with(2)
+        date = (monday + dt.timedelta(days=4)).isoformat()
+
+        warned = self.offer(date=date)
+        self.assertEqual(Session.objects.count(), 2)
+        self.assertContains(warned, "überschreiten Sie die Obergrenze")
+        self.assertContains(warned, "notice--error")
+
+        self.offer(date=date, confirm=True)
+        self.assertEqual(Session.objects.count(), 3)
+
+    def test_a_fourth_is_still_only_a_warning(self):
+        # Criterion 13 — nothing is ever blocked.
+        monday, _ = self.week_with(3)
+
+        self.offer(date=(monday + dt.timedelta(days=4)).isoformat(), confirm=True)
+
+        self.assertEqual(Session.objects.count(), 4)
+
+    def test_the_first_session_in_a_week_says_nothing_at_all(self):
+        monday, _ = self.week_with(0)
+
+        response = self.offer(date=(monday + dt.timedelta(days=2)).isoformat())
+
+        self.assertRedirects(response, reverse("supervisor_home"))
+        self.assertEqual(Session.objects.count(), 1)
+
+    def test_the_warning_names_the_sessions_already_there(self):
+        # D41 — the next action is picking a different week, which is impossible
+        # without knowing what is in this one.
+        monday, _ = self.week_with(2)
 
         response = self.offer(date=(monday + dt.timedelta(days=4)).isoformat())
 
-        self.assertEqual(Session.objects.count(), 2)
-        self.assertContains(response, "Bitte wählen Sie eine andere Woche")
-        # Both clashing sessions are named — date, time and supervisor (D41).
         self.assertContains(response, "Böttcher")
         self.assertContains(response, "Krause")
         self.assertContains(response, "10:00 Uhr")
-        self.assertContains(response, "14:00 Uhr")
+        self.assertContains(response, "11:00 Uhr")
 
     def test_the_cap_counts_every_supervisor_not_just_the_one_saving(self):
         # §6.1 — programme-wide, not per supervisor.
-        monday, _ = self.fill_the_week()
+        monday, _ = self.week_with(2)
 
         response = self.offer(
             user=self.other_supervisor, date=(monday + dt.timedelta(days=4)).isoformat()
         )
 
         self.assertEqual(Session.objects.count(), 2)
-        self.assertContains(response, "Bitte wählen Sie eine andere Woche")
+        self.assertContains(response, "überschreiten Sie die Obergrenze")
 
-    def test_with_enforcement_off_the_same_attempt_warns_and_can_be_confirmed(self):
-        # Criterion 11.
-        settings = Settings.load()
-        settings.enforce_weekly_cap = False
-        settings.save()
-        monday, _ = self.fill_the_week()
+    def test_an_admin_gets_the_same_warning_as_anybody_else(self):
+        # There is no override any more, because there is nothing to override.
+        monday, _ = self.week_with(2)
         date = (monday + dt.timedelta(days=4)).isoformat()
 
-        warned = self.offer(date=date)
-        self.assertEqual(Session.objects.count(), 2)
-        self.assertContains(warned, "Trotzdem speichern?")
-
-        self.offer(date=date, confirm=True)
-        self.assertEqual(Session.objects.count(), 3)
-
-    def test_an_admin_can_override_the_block(self):
-        # Criterion 13 — with an explicit confirmation step (§6.1).
-        monday, _ = self.fill_the_week()
-        date = (monday + dt.timedelta(days=4)).isoformat()
-
-        asked = self.offer(user=self.admin, date=date, supervisor=self.supervisor.pk)
-        self.assertEqual(Session.objects.count(), 2)
-        self.assertContains(asked, "überschreiten Sie die Obergrenze")
+        warned = self.offer(user=self.admin, date=date, supervisor=self.supervisor.pk)
+        self.assertContains(warned, "überschreiten Sie die Obergrenze")
 
         self.offer(
             user=self.admin, date=date, supervisor=self.supervisor.pk, confirm=True
@@ -275,22 +306,48 @@ class WeeklyCapTests(SessionScaffold):
         self.assertEqual(Session.objects.count(), 3)
 
     def test_a_cancelled_session_frees_its_slot_immediately(self):
-        monday, existing = self.fill_the_week()
+        monday, existing = self.week_with(2)
         existing[0].status = SessionStatus.CANCELLED
         existing[0].save()
 
-        self.offer(date=(monday + dt.timedelta(days=4)).isoformat())
+        # One left, so a new one only reaches the cap rather than exceeding it.
+        response = self.offer(date=(monday + dt.timedelta(days=4)).isoformat())
 
-        self.assertEqual(Session.objects.filter(status=SessionStatus.OFFERED).count(), 2)
+        self.assertContains(response, "Trotzdem speichern?")
+        self.assertNotContains(response, "überschreiten Sie die Obergrenze")
 
     def test_the_week_is_an_iso_week_so_sunday_and_monday_are_different_weeks(self):
-        monday, _ = self.fill_the_week()
+        monday, _ = self.week_with(2)
         sunday = monday - dt.timedelta(days=1)
 
-        # The Sunday before belongs to the previous ISO week, so it is not full.
         self.offer(date=sunday.isoformat())
 
         self.assertEqual(Session.objects.count(), 3)
+
+
+class StartTimeStepTests(SessionScaffold):
+    """Criterion 14a — quarter hours only (§7.2)."""
+
+    def test_a_quarter_hour_saves(self):
+        response = self.offer(start_time="10:15")
+
+        self.assertRedirects(response, reverse("supervisor_home"))
+        self.assertEqual(Session.objects.get().start_time, dt.time(10, 15))
+
+    def test_anything_else_is_refused_with_an_example(self):
+        response = self.offer(start_time="10:07")
+
+        self.assertEqual(Session.objects.count(), 0)
+        self.assertContains(response, "15-Minuten-Schritten")
+
+    def test_the_field_itself_steps_in_quarter_hours(self):
+        # So the browser's own picker moves in 15-minute jumps and explains
+        # itself, in the reader's language, before the server has to.
+        self.sign_in(self.supervisor)
+
+        response = self.client.get(reverse("session_new"))
+
+        self.assertContains(response, 'step="900"')
 
 
 class EditingTests(SessionScaffold):
@@ -328,7 +385,7 @@ class EditingTests(SessionScaffold):
         self.session.refresh_from_db()
         self.assertEqual(self.session.capacity, 6)
 
-    def test_moving_a_session_into_a_full_week_is_blocked_the_same_way(self):
+    def test_moving_a_session_into_a_busy_week_warns_the_same_way(self):
         # Criterion 12, first half.
         full_week_monday = self.session.date + dt.timedelta(days=14)
         while full_week_monday.isoweekday() != 1:
@@ -338,11 +395,18 @@ class EditingTests(SessionScaffold):
             existing.date = full_week_monday + dt.timedelta(days=offset)
             existing.save()
 
-        response = self.edit(date=(full_week_monday + dt.timedelta(days=3)).isoformat())
+        target = full_week_monday + dt.timedelta(days=3)
 
-        self.assertContains(response, "Bitte wählen Sie eine andere Woche")
+        response = self.edit(date=target.isoformat())
+
+        self.assertContains(response, "überschreiten Sie die Obergrenze")
         self.session.refresh_from_db()
-        self.assertNotEqual(self.session.date, full_week_monday + dt.timedelta(days=3))
+        self.assertNotEqual(self.session.date, target)
+
+        # ...and goes through once confirmed, like everything else (§6.1).
+        self.edit(date=target.isoformat(), confirm=True)
+        self.session.refresh_from_db()
+        self.assertEqual(self.session.date, target)
 
     def test_moving_a_session_notifies_and_bumps_the_calendar_sequence(self):
         # §6.5, §8.2 — same UID, higher SEQUENCE, so a calendar replaces the
@@ -497,14 +561,17 @@ class CapCheckUnitTests(SessionScaffold):
         self.assertEqual(len(including.clashing), 1)
         self.assertEqual(excluding.clashing, [])
 
-    def test_would_exceed_is_about_the_session_being_added(self):
+    def test_the_level_counts_the_session_being_added(self):
+        from supervision.sessions import AT_CAP, CLEAR, OVER_CAP
+
         settings = Settings.load()
         date = (REFERENCE + dt.timedelta(days=7)).date()
 
-        self.assertFalse(check_weekly_cap(date, settings).would_exceed)
+        # Nothing there yet: this would be the first.
+        self.assertEqual(check_weekly_cap(date, settings).level, CLEAR)
 
         make_session(self.supervisor, days_from_reference=7)
-        self.assertFalse(check_weekly_cap(date, settings).would_exceed)
+        self.assertEqual(check_weekly_cap(date, settings).level, AT_CAP)
 
         make_session(self.other_supervisor, days_from_reference=7)
-        self.assertTrue(check_weekly_cap(date, settings).would_exceed)
+        self.assertEqual(check_weekly_cap(date, settings).level, OVER_CAP)
