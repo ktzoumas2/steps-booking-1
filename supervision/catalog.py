@@ -199,6 +199,10 @@ COPY: dict[str, dict[str, str]] = {
         "de": "Ich habe die Liste geprüft",
         "en": "I have checked the list",
     },
+    "a2.all_reviewed": {
+        "de": "Alle Termine in diesem Zeitraum sind geprüft.",
+        "en": "All sessions in this range have been reviewed.",
+    },
     "a3.title": {"de": "Personen", "en": "People"},
     "a3.add_person": {"de": "Person hinzufügen", "en": "Add a person"},
     "a3.first_name": {"de": "Vorname", "en": "First name"},

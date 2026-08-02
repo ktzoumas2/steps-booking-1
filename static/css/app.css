@@ -565,6 +565,13 @@ h2 {
   border: 1px solid var(--error);
 }
 
+/* The sign-off's other face: the same box, now saying the thing is done. */
+.notice--ok {
+  color: #14532d;
+  background: #f0f7f1;
+  border: 1px solid #2f7d4f;
+}
+
 .notice--warning {
   color: #6b4708;
   background: #fdf6e3;
@@ -573,6 +580,10 @@ h2 {
 
 .notice p {
   margin: 0;
+}
+
+.notice form {
+  margin-top: 0.75rem;
 }
 
 @media (min-width: 40rem) {

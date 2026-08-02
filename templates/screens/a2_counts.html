@@ -10,37 +10,37 @@
 
   {% include "screens/_date_range.html" %}
 
+  {% comment %} The sign-off is its own form and its own action: pressing it
+     records who looked and when (§4.2), and the page comes back saying so.
+     Keeping it out of the export form is what lets it be a button rather than
+     a tick — one statement, one press, one visible consequence. {% endcomment %}
+  {% if needs_acknowledgement %}
+    <div class="notice notice--warning" role="alert">
+      <p>{% t "warn.unreviewed_in_range" count=unreviewed|length %}</p>
+      <ul class="clashing">
+        {% for session in unreviewed %}
+          <li>
+            <a href="{% url 'session_review' session.pk %}">{% when session %}</a>
+            · {{ session.supervisor.full_name }}
+          </li>
+        {% endfor %}
+      </ul>
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="acknowledge">
+        <input type="hidden" name="start" value="{{ start|date:'Y-m-d' }}">
+        <input type="hidden" name="end" value="{{ end|date:'Y-m-d' }}">
+        <button type="submit" class="button button--primary">{% t "a2.signoff_ack" %}</button>
+      </form>
+    </div>
+  {% elif has_sessions %}
+    <p class="notice notice--ok">{% t "a2.all_reviewed" %}</p>
+  {% endif %}
+
   <form method="post">
     {% csrf_token %}
     <input type="hidden" name="start" value="{{ start|date:'Y-m-d' }}">
     <input type="hidden" name="end" value="{{ end|date:'Y-m-d' }}">
-
-    {% if needs_acknowledgement %}
-      {% comment %} D30–D31 — above the figures, not hidden behind them. It acknowledges
-         rather than blocks: being shown exactly which sessions nobody has
-         checked is what makes the choice an informed one. {% endcomment %}
-      <div class="notice notice--warning" role="alert">
-        <p>{% t "warn.unreviewed_in_range" count=unreviewed|length %}</p>
-        <ul class="clashing">
-          {% for session in unreviewed %}
-            <li>
-              <a href="{% url 'session_review' session.pk %}">{% when session %}</a>
-              · {{ session.supervisor.full_name }}
-            </li>
-          {% endfor %}
-        </ul>
-        {% comment %} `required` puts the refusal at the point of the click,
-           where it belongs: the browser blocks the submit, points at this box
-           and explains itself in the reader's own language, so nothing new has
-           to be invented for §14. The server check below it is still the real
-           guard — this is the explanation, not the enforcement. {% endcomment %}
-        <label class="check">
-          <input type="checkbox" name="ack" value="1" required
-                 {% if acknowledged %}checked{% endif %}>
-          <span>{% t "a2.signoff_ack" %}</span>
-        </label>
-      </div>
-    {% endif %}
 
     <h2>{% t "a2.per_supervisor" %}</h2>
     {% if per_supervisor %}

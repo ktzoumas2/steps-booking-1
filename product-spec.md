@@ -1376,6 +1376,7 @@ it is a find-and-replace in this table, not a rewrite.
 | `a2.sessions_registered` | Angemeldet | Registered |
 | `a2.export_csv` | CSV exportieren | Export CSV |
 | `a2.signoff_ack` | Ich habe die Liste geprüft | I have checked the list |
+| `a2.all_reviewed` | Alle Termine in diesem Zeitraum sind geprüft. | All sessions in this range have been reviewed. |
 | `a3.title` | Personen | People |
 | `a3.add_person` | Person hinzufügen | Add a person |
 | `a3.first_name` | Vorname | First name |

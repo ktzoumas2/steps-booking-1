@@ -8,6 +8,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from supervision import counting, exports
+from supervision.catalog import t
 from supervision.clock import (
     FixedClock,
     today_in_berlin,
@@ -249,34 +250,85 @@ class SignOffTests(CountsScaffold):
         self.assertContains(response, reverse("session_review", args=[self.attended_b.pk]))
         self.assertContains(response, "Ich habe die Liste geprüft")
 
-    def test_the_acknowledgement_is_enforced_at_the_click_not_only_at_the_server(self):
-        # The server refusal is correct but silent: the page simply re-renders,
-        # which reads as "the button does nothing". `required` makes the browser
-        # block the submit and say why, at the box, in the reader's language.
+    def test_the_sign_off_is_a_button_that_records_who_looked(self):
+        # A tick that evaporates on reload is not a sign-off. §4.2 has
+        # confirmed_at / confirmed_by precisely to record that a human looked,
+        # and which human.
         self.sign_in(self.admin)
+        unreviewed_before = counting.unreviewed_in_range(self.clock.now())
+        self.assertTrue(unreviewed_before)
 
-        response = self.client.get(reverse("admin_counts"))
-
-        self.assertContains(response, 'name="ack" value="1" required')
-
-    def test_a_ticked_box_survives_a_re_render(self):
-        self.sign_in(self.admin)
-
-        response = self.client.post(reverse("admin_counts"), {"ack": "1"})
-
-        # No `export` was named, so this re-renders — and must not silently drop
-        # what the admin already told us.
-        self.assertContains(response, "checked")
-
-    def test_no_acknowledgement_is_asked_for_when_there_is_nothing_unreviewed(self):
-        self.sign_in(self.admin)
-
-        response = self.client.get(
-            reverse("admin_counts"),
-            {"start": self.attended_a.date.isoformat(), "end": self.attended_a.date.isoformat()},
+        response = self.client.post(
+            reverse("admin_counts"), {"action": "acknowledge"}, follow=True
         )
 
-        self.assertNotContains(response, 'name="ack"')
+        self.assertEqual(counting.unreviewed_in_range(self.clock.now()), [])
+        for session in unreviewed_before:
+            session.refresh_from_db()
+            self.assertEqual(session.confirmed_by, self.admin)
+            self.assertEqual(session.confirmed_at, REFERENCE)
+        # The warning is gone, and something says so in its place.
+        self.assertNotContains(response, "wurden noch nicht geprüft")
+        self.assertContains(response, t("a2.all_reviewed", "de"))
+
+    def test_signing_off_claims_nothing_about_whether_a_session_happened(self):
+        # "I have checked the list" is a statement about the reviewer. Setting
+        # took_place would put words in a supervisor's mouth about sessions the
+        # admin was not at; §6.4 keeps null meaning "no claim either way".
+        self.sign_in(self.admin)
+        unreviewed = counting.unreviewed_in_range(self.clock.now())
+
+        self.client.post(reverse("admin_counts"), {"action": "acknowledge"})
+
+        for session in unreviewed:
+            session.refresh_from_db()
+            self.assertIsNone(session.took_place)
+
+    def test_signing_off_changes_no_count(self):
+        # §2, §9.1 — reviewed never affects a figure either way, which is what
+        # makes a one-click bulk sign-off safe.
+        self.sign_in(self.admin)
+        before = counting.sessions_held_by_supervisor(self.clock.now())
+
+        self.client.post(reverse("admin_counts"), {"action": "acknowledge"})
+
+        self.assertEqual(
+            [(r["supervisor"].pk, r["sessions_held"]) for r in before],
+            [
+                (r["supervisor"].pk, r["sessions_held"])
+                for r in counting.sessions_held_by_supervisor(self.clock.now())
+            ],
+        )
+
+    def test_the_sign_off_keeps_the_range_you_were_looking_at(self):
+        self.sign_in(self.admin)
+        day = self.attended_b.date.isoformat()
+
+        response = self.client.post(
+            reverse("admin_counts"),
+            {"action": "acknowledge", "start": day, "end": day},
+        )
+
+        self.assertIn(f"start={day}", response["Location"])
+        self.assertIn(f"end={day}", response["Location"])
+
+    def test_it_redirects_so_a_refresh_cannot_repeat_it(self):
+        self.sign_in(self.admin)
+
+        response = self.client.post(reverse("admin_counts"), {"action": "acknowledge"})
+
+        self.assertEqual(response.status_code, 302)
+
+    def test_nothing_is_claimed_about_an_empty_range(self):
+        self.sign_in(self.admin)
+        far_off = (REFERENCE + dt.timedelta(days=900)).date().isoformat()
+
+        response = self.client.get(
+            reverse("admin_counts"), {"start": far_off, "end": far_off}
+        )
+
+        self.assertNotContains(response, t("a2.all_reviewed", "de"))
+        self.assertNotContains(response, "wurden noch nicht geprüft")
 
     def test_exporting_without_acknowledging_does_not_export(self):
         self.sign_in(self.admin)
@@ -287,10 +339,11 @@ class SignOffTests(CountsScaffold):
         self.assertNotIn("text/csv", response["Content-Type"])
         self.assertContains(response, "Ich habe die Liste geprüft")
 
-    def test_acknowledging_lets_the_export_run(self):
+    def test_the_export_runs_once_the_list_has_been_signed_off(self):
         self.sign_in(self.admin)
+        self.client.post(reverse("admin_counts"), {"action": "acknowledge"})
 
-        response = self.export(ack="1")
+        response = self.export()
 
         self.assertIn("text/csv", response["Content-Type"])
         self.assertIn("attachment", response["Content-Disposition"])

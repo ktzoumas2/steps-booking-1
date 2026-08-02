@@ -65,6 +65,33 @@ def candidates_to_add(session: Session) -> list[User]:
 
 
 @transaction.atomic
+def mark_reviewed(sessions, *, by: User, now: dt.datetime) -> int:
+    """The billing sign-off of §7.3 A2: a human states they looked at the list.
+
+    Writes `confirmed_at` and `confirmed_by` and **nothing else**. In
+    particular it does not touch `took_place`: "I have checked the list" is a
+    statement about the reviewer, not about whether each session happened, and
+    §6.4 keeps `null` meaning "no claim either way" — which still counts. An
+    admin signing off a range must not silently put words in a supervisor's
+    mouth about sessions they were not at.
+
+    Being *reviewed* never affects a count either way (§2, §9.1); it only
+    changes what A2 shows before exporting. So this is a safe thing to do in
+    bulk, which is exactly why the acknowledgement can stay one click (D31).
+    """
+    touched = 0
+    for session in sessions:
+        if session.is_reviewed:
+            continue
+        session.confirmed_at = now
+        session.confirmed_by = by
+        session.updated_at = now
+        session.save(update_fields=["confirmed_at", "confirmed_by", "updated_at"])
+        touched += 1
+    return touched
+
+
+@transaction.atomic
 def save_review(
     session: Session,
     *,

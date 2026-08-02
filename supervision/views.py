@@ -263,6 +263,16 @@ def _date_range(source) -> tuple[dt.date | None, dt.date | None]:
     return parse("start"), parse("end")
 
 
+def _range_query(start, end) -> str:
+    """Keep the chosen range across a redirect, so a sign-off returns you to
+    the figures you were looking at rather than to all time."""
+    return "&".join(
+        f"{name}={value.isoformat()}"
+        for name, value in (("start", start), ("end", end))
+        if value is not None
+    )
+
+
 def _participation_record(now, participant, start, end) -> dict:
     """P3's content, which A2's drill-down reuses verbatim (§7.3).
 
@@ -327,15 +337,22 @@ def admin_counts(request):
     unreviewed = counting.unreviewed_in_range(request.now, start=start, end=end)
 
     if request.method == "POST":
-        wanted = request.POST.get("export")
-        acknowledged = request.POST.get("ack") == "1"
+        # §7.3, D30 — the one place a human is made to look before the numbers
+        # become an invoice. Pressing this records who looked and when (§4.2),
+        # rather than ticking something that evaporates on the next page load.
+        # It stays one click and never requires opening a single session, which
+        # is what D31 means by acknowledging rather than blocking.
+        if request.POST.get("action") == "acknowledge":
+            review_service.mark_reviewed(
+                unreviewed, by=request.user, now=request.now
+            )
+            query = _range_query(start, end)
+            return redirect(
+                f"{reverse('admin_counts')}?{query}" if query else "admin_counts"
+            )
 
-        # §7.3, D30–D31 — the one place a human is made to look before the
-        # numbers become an invoice. It acknowledges rather than blocks:
-        # requiring every session to be opened would rebuild the confirmation
-        # chore D29 removed, and an admin facing a blocked export at invoice
-        # time will find a way around it.
-        if wanted in exports.EXPORTS and (acknowledged or not unreviewed):
+        wanted = request.POST.get("export")
+        if wanted in exports.EXPORTS and not unreviewed:
             build, filename = exports.EXPORTS[wanted]
             body = build(request.now, start=start, end=end)
             response = HttpResponse(body, content_type="text/csv; charset=utf-8")
@@ -356,7 +373,11 @@ def admin_counts(request):
             ),
             "unreviewed": unreviewed,
             "needs_acknowledgement": bool(unreviewed),
-            "acknowledged": request.POST.get("ack") == "1",
+            # Only worth saying "all reviewed" when there is something to have
+            # reviewed; on an empty range it would be a claim about nothing.
+            "has_sessions": bool(
+                counting.sessions_that_count(request.now, start=start, end=end)
+            ),
             "start": start,
             "end": end,
         },
