@@ -1,6 +1,6 @@
 {% load copy display %}
-{# The list behind the number (§9.1) — every total is clickable through to the
-   sessions that produced it. P3 and A2's drill-down render the same thing. #}
+{% comment %} The list behind the number (§9.1) — every total is clickable through to the
+   sessions that produced it. P3 and A2's drill-down render the same thing. {% endcomment %}
 <div class="headline">
   <p class="headline__number">{{ attended_count }}</p>
   <p class="headline__label">{% t "p3.count_label" %}</p>
@@ -29,8 +29,8 @@
 {% endif %}
 
 {% if absent %}
-  {# §7.1 — the one reason the two numbers differ, so it is shown rather than
-     silently omitted. Quieter, but present. #}
+  {% comment %} §7.1 — the one reason the two numbers differ, so it is shown rather than
+     silently omitted. Quieter, but present. {% endcomment %}
   <h2>{% t "p3.absent_group" %}</h2>
   <ul class="sessions sessions--quiet">
     {% for registration in absent %}

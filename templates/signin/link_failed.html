@@ -4,8 +4,8 @@
 {% block title %}{% t "signin.title" %} · {% t "app.name" %}{% endblock %}
 
 {% block content %}
-  {# §7.4 — say what happened, and say what to do next. The button is the
-     "what to do next", and it is the only thing on the screen. #}
+  {% comment %} §7.4 — say what happened, and say what to do next. The button is the
+     "what to do next", and it is the only thing on the screen. {% endcomment %}
   <div class="panel panel--narrow">
     <h1>{% t "signin.title" %}</h1>
     <p class="notice notice--error" role="alert">{% t error_key %}</p>

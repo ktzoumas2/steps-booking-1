@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 {% load copy display %}
 
-{# P1 — My sessions (§7.1): upcoming first, then past ones with whether they
+{% comment %} P1 — My sessions (§7.1): upcoming first, then past ones with whether they
    took place and whether the participant was marked present. Both lists are
-   empty until registrations exist. #}
+   empty until registrations exist. {% endcomment %}
 
 {% block title %}{% t "p1.tab_mine" %} · {% t "app.name" %}{% endblock %}
 
@@ -47,8 +47,8 @@
               {% duration registration.session %} · {{ registration.session.supervisor.full_name }}
             </div>
             <div class="session__facts">
-              {# §6.4 — a session that has ended took place, and everyone
-                 registered was there, unless somebody recorded otherwise. #}
+              {% comment %} §6.4 — a session that has ended took place, and everyone
+                 registered was there, unless somebody recorded otherwise. {% endcomment %}
               {% if registration.session.is_not_held %}{% t "s1.not_held" %}
               {% elif registration.counts_as_attended %}{% t "p1.attended" %}
               {% else %}{% t "p1.absent" %}{% endif %}

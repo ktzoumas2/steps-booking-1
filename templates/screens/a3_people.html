@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 {% load copy %}
 
-{# A3 — People (§7.3). Every account originates here, with the single exception
+{% comment %} A3 — People (§7.3). Every account originates here, with the single exception
    of the install-time admin (§5.1). Deactivate, never delete: deleting would
-   orphan the sessions and attendance records billing depends on (§4.1). #}
+   orphan the sessions and attendance records billing depends on (§4.1). {% endcomment %}
 
 {% block title %}{% t "a3.title" %} · {% t "app.name" %}{% endblock %}
 
@@ -34,8 +34,8 @@
         {{ form.role }}
       </div>
 
-      {# D10 — off by default. Routine additions need no ceremony, but without
-         the option the app cannot reach its own users on launch day. #}
+      {% comment %} D10 — off by default. Routine additions need no ceremony, but without
+         the option the app cannot reach its own users on launch day. {% endcomment %}
       <label class="check">
         <input type="checkbox" name="send_invitation" value="1">
         <span>{% t "a3.send_invitation" %}</span>

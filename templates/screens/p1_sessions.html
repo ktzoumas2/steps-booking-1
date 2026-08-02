@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% load copy display %}
 
-{# P1 — Available (§7.1). Seat counts and the one-tap `Anmelden` arrive with
-   registrations. #}
+{% comment %} P1 — Available (§7.1). Seat counts and the one-tap `Anmelden` arrive with
+   registrations. {% endcomment %}
 
 {% block title %}{% t "p1.tab_available" %} · {% t "app.name" %}{% endblock %}
 
@@ -10,8 +10,8 @@
   {% include "screens/_p1_tabs.html" %}
 
   {% if supervisors %}
-    {# §7.1, D15 — one filter, supervisor only. Each further control competes
-       with a screen whose job is one tap to sign up. #}
+    {% comment %} §7.1, D15 — one filter, supervisor only. Each further control competes
+       with a screen whose job is one tap to sign up. {% endcomment %}
     <form method="get" class="filter">
       <label for="supervisor">{% t "p1.filter_label" %}</label>
       <select name="supervisor" id="supervisor" onchange="this.form.submit()">
@@ -48,9 +48,9 @@
 
             <div class="session__seats">{% t "p1.seats" taken=session.taken capacity=session.capacity %}</div>
 
-            {# §7.1 — signing up happens from the list, one tap, no
+            {% comment %} §7.1 — signing up happens from the list, one tap, no
                intermediate screen. `next` brings the participant back to the
-               list they were reading, filter and all. #}
+               list they were reading, filter and all. {% endcomment %}
             {% if session.i_am_registered %}
               <form method="post" action="{% url 'session_give_up_place' session.pk %}">
                 {% csrf_token %}
@@ -72,8 +72,8 @@
     {% endfor %}
 
   {% elif any_upcoming %}
-    {# D28 — sessions exist, none match. Never the no-sessions-at-all message:
-       that would be a lie the user can act on wrongly. #}
+    {% comment %} D28 — sessions exist, none match. Never the no-sessions-at-all message:
+       that would be a lie the user can act on wrongly. {% endcomment %}
     <p class="empty">
       {% t "empty.no_sessions_for_filter" name=filtered_to.full_name %}
       <a class="button" href="?supervisor=">{% t "p1.filter_clear" %}</a>

@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 {% load copy display %}
 
-{# A1 — All sessions (§7.3). The date-range, supervisor and state filters — and
+{% comment %} A1 — All sessions (§7.3). The date-range, supervisor and state filters — and
    the `noch nicht geprüft` one that drives a billing run — arrive with the
-   admin slice. On an empty database this points at A3: people come first. #}
+   admin slice. On an empty database this points at A3: people come first. {% endcomment %}
 
 {% block title %}{% t "a1.title" %} · {% t "app.name" %}{% endblock %}
 

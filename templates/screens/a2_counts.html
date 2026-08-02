@@ -16,9 +16,9 @@
     <input type="hidden" name="end" value="{{ end|date:'Y-m-d' }}">
 
     {% if needs_acknowledgement %}
-      {# D30–D31 — above the figures, not hidden behind them. It acknowledges
+      {% comment %} D30–D31 — above the figures, not hidden behind them. It acknowledges
          rather than blocks: being shown exactly which sessions nobody has
-         checked is what makes the choice an informed one. #}
+         checked is what makes the choice an informed one. {% endcomment %}
       <div class="notice notice--warning" role="alert">
         <p>{% t "warn.unreviewed_in_range" count=unreviewed|length %}</p>
         <ul class="clashing">

@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% load copy display %}
 
-{# §6.3 — calling a session off. A cancelled session cannot be reopened, so the
-   consequence is spelled out before the button, not after it. #}
+{% comment %} §6.3 — calling a session off. A cancelled session cannot be reopened, so the
+   consequence is spelled out before the button, not after it. {% endcomment %}
 
 {% block title %}{% t "s2.cancel_session" %} · {% t "app.name" %}{% endblock %}
 

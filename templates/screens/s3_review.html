@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 {% load copy display %}
 
-{# S3 — Review a session (§7.2, §6.4).
+{% comment %} S3 — Review a session (§7.2, §6.4).
 
    The screen opens on the assumption that everything went as planned: the
    session took place and everyone registered is ticked. `Alles wie geplant`
    saves without changing a value, which is a real action because it sets
-   confirmed_at. #}
+   confirmed_at. {% endcomment %}
 
 {% block title %}{% t "s3.title" %} · {% t "app.name" %}{% endblock %}
 
@@ -64,8 +64,8 @@
     {% endif %}
 
     {% if candidates %}
-      {# §6.4 — attendance genuinely differs from sign-ups, and reconciling the
-         two by hand is one of the things this app exists to stop. #}
+      {% comment %} §6.4 — attendance genuinely differs from sign-ups, and reconciling the
+         two by hand is one of the things this app exists to stop. {% endcomment %}
       <div class="field">
         <label for="add">{% t "s3.add_attendee" %}</label>
         <select name="add" id="add" multiple size="4">

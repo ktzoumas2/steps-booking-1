@@ -38,8 +38,8 @@
   {% endif %}
 
   <main class="main">
-    {# §7.4 — an action that was refused says so on the screen it returns to.
-       `role="alert"` is what makes a screen reader announce it. #}
+    {% comment %} §7.4 — an action that was refused says so on the screen it returns to.
+       `role="alert"` is what makes a screen reader announce it. {% endcomment %}
     {% if messages %}
       {% for message in messages %}
         <p class="notice notice--error" role="alert">{{ message }}</p>

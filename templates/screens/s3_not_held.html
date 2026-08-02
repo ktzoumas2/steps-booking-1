@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 {% load copy display %}
 
-{# §6.4 — the app warns before saving, since this removes the session from the
+{% comment %} §6.4 — the app warns before saving, since this removes the session from the
    supervisor's billing count and from every participant's record. Participants
-   are not notified (D12): they were there, or they weren't. #}
+   are not notified (D12): they were there, or they weren't. {% endcomment %}
 
 {% block title %}{% t "s3.not_held_action" %} · {% t "app.name" %}{% endblock %}
 

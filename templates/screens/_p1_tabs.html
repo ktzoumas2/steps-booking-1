@@ -1,6 +1,6 @@
 {% load copy %}
-{# P1's three tabs (§7.1). `aria-current` is what tells a screen reader which
-   one you are on; the underline is only the sighted half of that. #}
+{% comment %} P1's three tabs (§7.1). `aria-current` is what tells a screen reader which
+   one you are on; the underline is only the sighted half of that. {% endcomment %}
 <nav class="tabs">
   <a class="tab {% if tab == 'available' %}tab--current{% endif %}"
      href="{% url 'participant_home' %}"
