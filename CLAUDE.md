@@ -45,7 +45,10 @@ email provider (§13 q7), and STEPS confirming the open questions of §13.
   and *to*, and the two *Add to calendar* link labels. Each is explained
   there; all belong in a §14.11.
 - **The weekly cap is checked on save only.** §7.2 also wants it inline as soon
-  as the date is picked, which needs a little client-side scripting.
+  as the date is picked, which needs a little client-side scripting. The cap
+  itself now advises rather than refuses (§6.1, rewritten 2026-08-02): at the
+  cap a warning, above it a stronger one, neither ever blocking. There is no
+  `enforce_weekly_cap` setting any more — it had nothing left to control.
 - **The supervisor dropdown auto-submits** via a single inline `onchange`, the
   only JavaScript in the app. Without it a `<select>` needs a submit button, and
   §14 has no label for one — the alternative would be inventing copy. Filtering
@@ -210,3 +213,17 @@ pyproject.toml  dependencies, Python pin
 
 - Ask before adding a new top-level directory or a new service.
 - Prefer small, reviewable changes over large scaffolds generated in one go.
+- **Check the rendered page, not just the response.** Three defects reached the
+  user from one blind spot: asserting that the server did the right thing
+  instead of that a person gets the right result.
+  - Thirty `{# … #}` comments printed themselves onto every screen for several
+    slices. Django's is a *single-line* comment; multi-line ones render as text.
+    `tests/test_templates.py` guards this now.
+  - The export buttons "did nothing" because every test posted a dict through
+    the test client, which bypasses the HTML form entirely, and the server
+    refused silently.
+  - `step="900"` on a time input satisfied a test and changed nothing a user
+    could see; browsers still accept a typed 10:07. It had to become a select.
+  When a change is visible, look at it — `curl` the page and read it, or ask
+  for a screenshot. A green suite proves less here than thirty seconds of
+  looking.
