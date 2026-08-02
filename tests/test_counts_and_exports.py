@@ -249,6 +249,35 @@ class SignOffTests(CountsScaffold):
         self.assertContains(response, reverse("session_review", args=[self.attended_b.pk]))
         self.assertContains(response, "Ich habe die Liste geprüft")
 
+    def test_the_acknowledgement_is_enforced_at_the_click_not_only_at_the_server(self):
+        # The server refusal is correct but silent: the page simply re-renders,
+        # which reads as "the button does nothing". `required` makes the browser
+        # block the submit and say why, at the box, in the reader's language.
+        self.sign_in(self.admin)
+
+        response = self.client.get(reverse("admin_counts"))
+
+        self.assertContains(response, 'name="ack" value="1" required')
+
+    def test_a_ticked_box_survives_a_re_render(self):
+        self.sign_in(self.admin)
+
+        response = self.client.post(reverse("admin_counts"), {"ack": "1"})
+
+        # No `export` was named, so this re-renders — and must not silently drop
+        # what the admin already told us.
+        self.assertContains(response, "checked")
+
+    def test_no_acknowledgement_is_asked_for_when_there_is_nothing_unreviewed(self):
+        self.sign_in(self.admin)
+
+        response = self.client.get(
+            reverse("admin_counts"),
+            {"start": self.attended_a.date.isoformat(), "end": self.attended_a.date.isoformat()},
+        )
+
+        self.assertNotContains(response, 'name="ack"')
+
     def test_exporting_without_acknowledging_does_not_export(self):
         self.sign_in(self.admin)
 

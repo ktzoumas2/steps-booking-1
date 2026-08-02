@@ -356,6 +356,7 @@ def admin_counts(request):
             ),
             "unreviewed": unreviewed,
             "needs_acknowledgement": bool(unreviewed),
+            "acknowledged": request.POST.get("ack") == "1",
             "start": start,
             "end": end,
         },

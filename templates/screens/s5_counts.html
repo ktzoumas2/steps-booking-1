@@ -11,11 +11,9 @@
 
   {% include "screens/_date_range.html" %}
 
-  {% comment %} The heading above already reads `s5.title`, which since the
-     rewording is word for word `s5.sessions_held`. Printing both would say the
-     same thing twice, so the number carries only its range. {% endcomment %}
   <div class="headline">
     <p class="headline__number">{{ count }}</p>
+    <p class="headline__label">{% t "s5.sessions_held" %}</p>
     <p class="headline__range quiet">
       {% if start or end %}{{ start|date:"Y-m-d" }} – {{ end|date:"Y-m-d" }}{% else %}{% t "p3.range_all" %}{% endif %}
     </p>

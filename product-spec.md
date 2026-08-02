@@ -1249,7 +1249,7 @@ it is a find-and-replace in this table, not a rewrite.
 | `nav.my_sessions` | Meine Termine | My sessions |
 | `nav.my_participation` | Meine Teilnahme | My participation |
 | `nav.profile` | Mein Profil | My profile |
-| `nav.my_counts` | Durchgeführte Termine | Sessions held |
+| `nav.my_counts` | Auswertung | Summary |
 | `nav.all_sessions` | Alle Termine | All sessions |
 | `nav.counts_export` | Auswertung | Summary |
 | `nav.people` | Personen | People |
@@ -1356,7 +1356,7 @@ it is a find-and-replace in this table, not a rewrite.
 | `s4.title` | Mein Profil | My profile |
 | `s4.email_readonly` | Ihre E-Mail-Adresse ist Ihre Anmeldung. Nur die Administration kann sie ändern. | Your email address is your sign-in. Only an administrator can change it. |
 | `s4.language` | Sprache | Language |
-| `s5.title` | Durchgeführte Supervisionen | Sessions held |
+| `s5.title` | Auswertung | Summary |
 | `s5.sessions_held` | Durchgeführte Supervisionen | Sessions held |
 
 ### 14.7 A1–A4 — Admin (§7.3)

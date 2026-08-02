@@ -29,8 +29,14 @@
             </li>
           {% endfor %}
         </ul>
+        {% comment %} `required` puts the refusal at the point of the click,
+           where it belongs: the browser blocks the submit, points at this box
+           and explains itself in the reader's own language, so nothing new has
+           to be invented for §14. The server check below it is still the real
+           guard — this is the explanation, not the enforcement. {% endcomment %}
         <label class="check">
-          <input type="checkbox" name="ack" value="1">
+          <input type="checkbox" name="ack" value="1" required
+                 {% if acknowledged %}checked{% endif %}>
           <span>{% t "a2.signoff_ack" %}</span>
         </label>
       </div>

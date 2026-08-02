@@ -29,7 +29,7 @@ COPY: dict[str, dict[str, str]] = {
     "nav.my_sessions": {"de": "Meine Termine", "en": "My sessions"},
     "nav.my_participation": {"de": "Meine Teilnahme", "en": "My participation"},
     "nav.profile": {"de": "Mein Profil", "en": "My profile"},
-    "nav.my_counts": {"de": "Durchgeführte Termine", "en": "Sessions held"},
+    "nav.my_counts": {"de": "Auswertung", "en": "Summary"},
     "nav.all_sessions": {"de": "Alle Termine", "en": "All sessions"},
     "nav.counts_export": {"de": "Auswertung", "en": "Summary"},
     "nav.people": {"de": "Personen", "en": "People"},
@@ -177,7 +177,7 @@ COPY: dict[str, dict[str, str]] = {
         "change it.",
     },
     "s4.language": {"de": "Sprache", "en": "Language"},
-    "s5.title": {"de": "Durchgeführte Supervisionen", "en": "Sessions held"},
+    "s5.title": {"de": "Auswertung", "en": "Summary"},
     "s5.sessions_held": {
         "de": "Durchgeführte Supervisionen",
         "en": "Sessions held",
