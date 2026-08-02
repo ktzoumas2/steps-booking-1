@@ -1249,9 +1249,9 @@ it is a find-and-replace in this table, not a rewrite.
 | `nav.my_sessions` | Meine Termine | My sessions |
 | `nav.my_participation` | Meine Teilnahme | My participation |
 | `nav.profile` | Mein Profil | My profile |
-| `nav.my_counts` | Meine Zahlen | My counts |
+| `nav.my_counts` | Durchgeführte Termine | Sessions held |
 | `nav.all_sessions` | Alle Termine | All sessions |
-| `nav.counts_export` | Zahlen und Export | Counts and export |
+| `nav.counts_export` | Auswertung | Summary |
 | `nav.people` | Personen | People |
 | `nav.settings` | Einstellungen | Settings |
 | `action.sign_out` | Abmelden | Sign out |
@@ -1356,7 +1356,7 @@ it is a find-and-replace in this table, not a rewrite.
 | `s4.title` | Mein Profil | My profile |
 | `s4.email_readonly` | Ihre E-Mail-Adresse ist Ihre Anmeldung. Nur die Administration kann sie ändern. | Your email address is your sign-in. Only an administrator can change it. |
 | `s4.language` | Sprache | Language |
-| `s5.title` | Meine Zahlen | My counts |
+| `s5.title` | Durchgeführte Supervisionen | Sessions held |
 | `s5.sessions_held` | Durchgeführte Supervisionen | Sessions held |
 
 ### 14.7 A1–A4 — Admin (§7.3)
@@ -1367,7 +1367,7 @@ it is a find-and-replace in this table, not a rewrite.
 | `a1.filter_state` | Status | State |
 | `a1.filter_unreviewed` | Nur ungeprüfte | Unreviewed only |
 | `a1.filter_range` | Zeitraum | Date range |
-| `a2.title` | Zahlen und Export | Counts and export |
+| `a2.title` | Supervisionen und Teilnahme | Sessions and attendance |
 | `a2.per_supervisor` | Pro Supervisor*in | Per supervisor |
 | `a2.per_participant` | Pro Teilnehmer*in | Per participant |
 | `a2.sessions_held` | Durchgeführt | Sessions held |
